@@ -483,6 +483,15 @@ static void OnAgentNotify(UINT32 code, void *data)
       i--;
    }
 
+   for (int i = 0; i < s_templateParsers.size(); i++)
+   {
+      LogParser *p = s_templateParsers.get(i);
+      nxlog_debug_tag(DEBUG_TAG, 3, _T("Reloading parser for file %s"), p->getFileName());
+      p->stop();
+      delete p;
+   }
+   s_templateParsers.clear();
+
    const TCHAR *dataDir = AgentGetDataDirectory();
    TCHAR tail = dataDir[_tcslen(dataDir) - 1];
 
@@ -514,6 +523,12 @@ static void OnAgentNotify(UINT32 code, void *data)
 #else
       p->setThread(ThreadCreateEx(ParserThreadFile, p));
 #endif
+   }
+
+   for (int i = 0; i < s_templateParsers.size(); i++)
+   {
+      LogParser *p = s_templateParsers.get(i);
+      p->setThread(ThreadCreateEx(ParserThreadTemplate, p));
    }
 
    s_parserLock.unlock();
