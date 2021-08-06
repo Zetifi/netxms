@@ -1974,6 +1974,12 @@ CREATE TABLE dashboard_associations
 CREATE TABLE business_services
 (
   service_id integer not null,
+  is_protopype char(1) not null,
+  protopype_id integer not null,
+  instance varchar(1023),
+  instance_method integer not null,
+  instance_data varchar(1023),
+  instance_filter SQL_TEXT,
   PRIMARY KEY(service_id)
 ) TABLE_TYPE;
 
@@ -1983,16 +1989,16 @@ CREATE TABLE business_services
 CREATE TABLE slm_checks
 (
   id integer not null,
-  type integer not null, // 1 - threshold, 2 - script
-  content SQL_TEXT null, // if type == 2
-  threshold_id integer not null, // if type == 1; refers to thresholds.id
-  reason varchar(255) null,
-  is_template integer not null,
-  template_id integer not null,  // template check ID
+  service_id integer not null,  
+  type integer not null, // 2 - threshold, 1 - script, 0 - node
+  description varchar(1023),
+  related_object integer not null,
+  related_dci integer not null,  // threshold_id => related_dci
+  status_threshold integer not null,
+  content SQL_TEXT null, // if type == 1
   current_ticket integer not null,
   PRIMARY KEY(id)
 ) TABLE_TYPE;
-
 /*
 ** SLA node links
 */

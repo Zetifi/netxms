@@ -23,6 +23,260 @@
 #include "nxdbmgr.h"
 #include <nxevent.h>
 
+
+
+/**
+ * Delete all Netobj level information
+ */
+static bool BSCommonDeleteObject(uint32_t id)
+{
+   TCHAR query[1024];
+   _sntprintf(query, 1024, _T("DELETE FROM acl WHERE object_id=%d"), id);
+   if (!SQLQuery(query) && !g_ignoreErrors)
+      return false;
+
+   _sntprintf(query, 1024,  _T("DELETE FROM object_properties WHERE object_id=%d"), id);
+   if (!SQLQuery(query) && !g_ignoreErrors)
+      return false;
+
+   _sntprintf(query, 1024,  _T("DELETE FROM object_custom_attributes WHERE object_id=%d"), id);
+   if (!SQLQuery(query) && !g_ignoreErrors)
+      return false;
+
+   _sntprintf(query, 1024,  _T("DELETE FROM object_urls WHERE object_id=%d"), id);
+   if (!SQLQuery(query) && !g_ignoreErrors)
+      return false;
+
+   _sntprintf(query, 1024,  _T("DELETE FROM responsible_users WHERE object_id=%d"), id);
+   if (!SQLQuery(query) && !g_ignoreErrors)
+      return false;
+
+   TCHAR table[256];
+   _sntprintf(table, 256, _T("gps_history_%u"), id);
+   int rc = DBIsTableExist(g_dbHandle, table);
+   if (rc == DBIsTableExist_Found)
+   {
+      TCHAR query[256];
+      _sntprintf(query, 256, _T("DROP TABLE gps_history_%u"), id);
+      return DBQuery(g_dbHandle, query);
+   }
+
+   return true;
+}
+
+/**
+ * Upgrade from 40.67 to 40.68
+ */
+static bool H_UpgradeFromV67()
+{
+   //Business service
+   static const TCHAR *businessServiceBatch =
+      _T("ALTER TABLE business_services ADD is_protopype char(1)\n")
+      _T("ALTER TABLE business_services ADD protopype_id integer\n")
+      _T("ALTER TABLE business_services ADD instance varchar(1023)\n")
+      _T("ALTER TABLE business_services ADD instance_method integer\n")
+      _T("ALTER TABLE business_services ADD instance_data varchar(1023)\n")
+      _T("ALTER TABLE business_services ADD instance_filter $SQL:TEXT\n")
+      _T("UPDATE business_services SET instance_method=0,protopype_id=0,is_protopype='0'\n")
+      _T("<END>");
+   CHK_EXEC(SQLBatch(businessServiceBatch));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("business_services"), _T("instance_method")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("business_services"), _T("protopype_id")));
+
+   //Delete all templates
+   CHK_EXEC(SQLQuery(_T("DELETE FROM object_properties WHERE object_id IN (SELECT id FROM slm_checks WHERE is_template=1)")));
+   CHK_EXEC(SQLQuery(_T("DELETE FROM container_members WHERE object_id IN (SELECT id FROM slm_checks WHERE is_template=1)")));
+   CHK_EXEC(SQLQuery(_T("DELETE FROM slm_checks WHERE is_template=1")));
+
+   //SLM Checks
+   static const TCHAR *slmCheckBatch =
+      _T("ALTER TABLE slm_checks ADD service_id integer\n")
+      _T("ALTER TABLE slm_checks ADD related_object integer\n")
+      _T("ALTER TABLE slm_checks ADD related_dci integer\n")
+      _T("ALTER TABLE slm_checks ADD status_threshold integer\n")
+      _T("ALTER TABLE slm_checks ADD description varchar(1023)\n")
+      _T("UPDATE slm_checks SET service_id=0,related_object=0,related_dci=0,status_threshold=1\n") //Threshold is warning by default
+      _T("<END>");
+   CHK_EXEC(SQLBatch(slmCheckBatch));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("service_id")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("related_object")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("related_dci")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("status_threshold")));
+
+   CHK_EXEC(DBDropColumn(g_dbHandle, _T("slm_checks"), _T("reason")));
+   CHK_EXEC(DBDropColumn(g_dbHandle, _T("slm_checks"), _T("is_template")));
+   CHK_EXEC(DBDropColumn(g_dbHandle, _T("slm_checks"), _T("template_id")));
+
+   //check if there are node links under business service parent
+   //change all node links to business services
+   IntegerArray<uint32_t> convertedLinks;
+   DB_RESULT linkUnderMainContainer = SQLSelect(_T("SELECT cm.object_id FROM container_members cm INNER JOIN node_links nl ON nl.nodelink_id=cm.object_id WHERE cm.container_id=9"));
+   if (linkUnderMainContainer != nullptr)
+   {
+      int slmCheckCount = DBGetNumRows(linkUnderMainContainer);
+      if (slmCheckCount > 0)
+      {
+         //create new web service and update child/parent
+         for (int i = 0; i < slmCheckCount; i++)
+         {
+            uint32_t linkId = DBGetFieldULong(linkUnderMainContainer, i, 0);
+            TCHAR query[1024];
+            _sntprintf(query, 1024, _T("INSERT INTO business_services (service_id,is_protopype,protopype_id,instance,instance_method,instance_data,instance_filter) VALUES (%d,'0',0,'',0,'','')"),
+                  linkId);
+
+            if (!SQLQuery(query) && !g_ignoreErrors)
+            {
+               return false;
+            }
+            convertedLinks.add(linkId);
+         }
+      }
+      DBFreeResult(linkUnderMainContainer);
+   }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
+
+   //remove node link from relationship
+   DB_RESULT nodeLinksResult = SQLSelect(_T("SELECT nodelink_id,node_id FROM node_links"));
+   if (nodeLinksResult != nullptr)
+   {
+      int linkCount = DBGetNumRows(nodeLinksResult);
+      for(int i = 0; i < linkCount; i++)
+      {
+         uint32_t nodeLinkId = DBGetFieldULong(nodeLinksResult, i, 0);
+         //set node id as related object for slm checks
+         TCHAR query[1024];
+         _sntprintf(query, 1024, _T("UPDATE slm_checks SET related_object=%d WHERE id IN (SELECT object_id FROM container_members WHERE container_id=%d)"),
+               DBGetFieldULong(nodeLinksResult, i, 1), nodeLinkId);
+
+         if (!SQLQuery(query) && !g_ignoreErrors)
+         {
+            return false;
+         }
+
+         if (!convertedLinks.contains(nodeLinkId))
+         {
+            //Remove node link from relationship
+            uint32_t parentId = 0;
+            _sntprintf(query, 1024, _T("SELECT container_id FROM container_members WHERE object_id=%d"),
+                  nodeLinkId);
+            DB_RESULT result = SQLSelect(query);
+            if (result != nullptr)
+            {
+               if (DBGetNumRows(result) > 0)
+               {
+                  parentId = DBGetFieldULong(result, 0, 0);
+               }
+               DBFreeResult(result);
+            }
+            else if (!g_ignoreErrors)
+            {
+               return false;
+            }
+
+            _sntprintf(query, 1024, _T("UPDATE container_members SET container_id=%d WHERE container_id=%d"),
+                  parentId, nodeLinkId);
+
+            if (!SQLQuery(query) && !g_ignoreErrors)
+            {
+               return false;
+            }
+
+            //Delete all additional node link information
+            _sntprintf(query, 1024, _T("DELETE FROM container_members WHERE object_id=%d"), nodeLinkId);
+            if (!SQLQuery(query) && !g_ignoreErrors)
+               return false;
+
+            _sntprintf(query, 1024, _T("DELETE FROM object_containers WHERE id=%d"), nodeLinkId);
+            if (!SQLQuery(query) && !g_ignoreErrors)
+               return false;
+
+            CHK_EXEC(BSCommonDeleteObject(nodeLinkId));
+         }
+      }
+      DBFreeResult(nodeLinksResult);
+   }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
+
+   //Update slm check description and relationship with business service
+   DB_RESULT slmDescriptionResult = SQLSelect(_T("SELECT id,name FROM object_properties op INNER JOIN slm_checks sc ON sc.id=op.object_id"));
+   if (slmDescriptionResult != nullptr)
+   {
+      int count = DBGetNumRows(slmDescriptionResult);
+      DB_STATEMENT hStmt = DBPrepare(g_dbHandle, _T("UPDATE slm_checks SET description=? WHERE id=?"), true);
+      if (hStmt != NULL)
+      {
+         for(int i = 0; i < count; i++)
+         {
+            uint32_t checkId = DBGetFieldULong(slmDescriptionResult, i, 0);
+
+            TCHAR query[1024];
+            _sntprintf(query, 1024, _T("UPDATE slm_checks SET service_id=(SELECT container_id FROM container_members WHERE object_id=%d) WHERE id=%d"), checkId, checkId);
+            if (!SQLQuery(query) && !g_ignoreErrors)
+               return false;
+
+            _sntprintf(query, 1024, _T("DELETE FROM container_members WHERE object_id=%d"), checkId);
+            if (!SQLQuery(query) && !g_ignoreErrors)
+               return false;
+
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, DBGetField(slmDescriptionResult, i, 1, nullptr, 0), DB_BIND_DYNAMIC);
+            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, checkId);
+            if (!SQLExecute(hStmt) && !g_ignoreErrors)
+            {
+               DBFreeStatement(hStmt);
+               return false;
+            }
+         }
+         DBFreeStatement(hStmt);
+      }
+      else if (!g_ignoreErrors)
+      {
+         return false;
+      }
+      DBFreeResult(slmDescriptionResult);
+   }
+
+   //Delete all slm check object information
+   DB_RESULT slmCheckResult = SQLSelect(_T("SELECT id FROM slm_checks"));
+   if (slmCheckResult != nullptr)
+   {
+      int slmCheckCount = DBGetNumRows(slmCheckResult);
+      for(int i = 0; i < slmCheckCount; i++)
+      {
+         CHK_EXEC(BSCommonDeleteObject(DBGetFieldULong(slmCheckResult, i, 0)));
+      }
+      DBFreeResult(slmCheckResult);
+   }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
+
+   CHK_EXEC(SQLQuery(_T("DROP TABLE node_links")));
+
+   //Update auto apply table
+   static const TCHAR *autoBindBatch =
+      _T("ALTER TABLE auto_bind_target ADD dci_bind_filter $SQL:TEXT\n")
+      _T("ALTER TABLE auto_bind_target ADD dci_bind_flag char(1)\n")
+      _T("ALTER TABLE auto_bind_target ADD dci_unbind_flag integer\n")
+      _T("UPDATE auto_bind_target SET dci_bind_flag='0',dci_unbind_flag='0'\n")
+      _T("<END>");
+   CHK_EXEC(SQLBatch(autoBindBatch));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("auto_bind_target"), _T("dci_bind_flag")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("auto_bind_target"), _T("dci_unbind_flag")));
+   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_filter"), _T("object_bind_filter")));
+   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("unbind_flag"), _T("object_unbind_flag")));
+   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_flag"), _T("object_bind_flag")));
+
+   CHK_EXEC(SetMinorSchemaVersion(68));
+   return true;
+}
+
 /**
  * Upgrade from 40.67 to 40.68
  */
