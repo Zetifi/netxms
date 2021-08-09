@@ -82,7 +82,7 @@ void AbstractContainer::linkObjects()
  */
 void AbstractContainer::calculateCompoundStatus(BOOL bForcedRecalc)
 {
-	super::calculateCompoundStatus(bForcedRecalc);
+	/*super::calculateCompoundStatus(bForcedRecalc);
 
 	if ((m_status == STATUS_UNKNOWN) && (m_dwChildIdListSize == 0))
    {
@@ -90,7 +90,7 @@ void AbstractContainer::calculateCompoundStatus(BOOL bForcedRecalc)
 		m_status = STATUS_NORMAL;
 		setModified(MODIFY_RUNTIME);
 		unlockProperties();
-	}
+	}*/
 }
 
 /**

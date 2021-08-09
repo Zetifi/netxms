@@ -1312,7 +1312,7 @@ retry_db_lock:
    s_mobileDeviceListenerThread = ThreadCreateEx(MobileDeviceListenerThread);
 
    // Start uptime calculator for SLM
-   ThreadCreate(UptimeCalculator);
+   //ThreadCreate(UptimeCalculator);
 
    // Call startup functions for the modules
    CALL_ALL_MODULES(pfServerStarted, ());

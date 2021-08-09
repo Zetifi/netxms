@@ -26,32 +26,32 @@
 /**
  * NodeLink default constructor
  */
-NodeLink::NodeLink() : super()
+/*NodeLink::NodeLink() : super()
 {
 	_tcscpy(m_name, _T("Default"));
 	m_nodeId = 0;
-}
+}*/
 
 /**
  * Constructor for new nodelink object
  */
-NodeLink::NodeLink(const TCHAR *name, UINT32 nodeId) : super(name)
+/*NodeLink::NodeLink(const TCHAR *name, UINT32 nodeId) : super(name)
 {
 	nx_strncpy(m_name, name, MAX_OBJECT_NAME);
 	m_nodeId = nodeId;
-}
+}*/
 
 /**
  * Nodelink class destructor
  */
-NodeLink::~NodeLink()
+/*NodeLink::~NodeLink()
 {
-}
+}*/
 
 /**
  * Create object from database data
  */
-bool NodeLink::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
+/*bool NodeLink::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 {
 	m_id = id;
 
@@ -94,12 +94,12 @@ bool NodeLink::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 	DBFreeStatement(hStmt);
 
 	return true;
-}
+}*/
 
 /**
  * Save nodelink to database
  */
-bool NodeLink::saveToDatabase(DB_HANDLE hdb)
+/*bool NodeLink::saveToDatabase(DB_HANDLE hdb)
 {
    if (m_modified & MODIFY_OTHER)
    {
@@ -118,44 +118,44 @@ bool NodeLink::saveToDatabase(DB_HANDLE hdb)
          return false;
    }
 	return super::saveToDatabase(hdb);
-}
+}*/
 
 /**
  * Delete object from database
  */
-bool NodeLink::deleteFromDatabase(DB_HANDLE hdb)
+/*bool NodeLink::deleteFromDatabase(DB_HANDLE hdb)
 {
 	bool success = super::deleteFromDatabase(hdb);
 	if (success)
       success = executeQueryOnObject(hdb, _T("DELETE FROM node_links WHERE nodelink_id=?"));
 	return success;
-}
+}*/
 
 /**
  * Create CSCP message with object's data
  */
-void NodeLink::fillMessageInternal(NXCPMessage *pMsg, UINT32 userId)
+/*void NodeLink::fillMessageInternal(NXCPMessage *pMsg, UINT32 userId)
 {
 	super::fillMessageInternal(pMsg, userId);
 	pMsg->setField(VID_NODE_ID, m_nodeId);
-}
+}*/
 
 /**
  * Modify object from message
  */
-UINT32 NodeLink::modifyFromMessageInternal(NXCPMessage *pRequest)
+/*UINT32 NodeLink::modifyFromMessageInternal(NXCPMessage *pRequest)
 {
 	if (pRequest->isFieldExist(VID_NODE_ID))
 	{
 		m_nodeId = pRequest->getFieldAsUInt32(VID_NODE_ID);
 	}
 	return super::modifyFromMessageInternal(pRequest);
-}
+}*/
 
 /**
  * Execute underlying checks for this node link
  */
-void NodeLink::execute()
+/*void NodeLink::execute()
 {
 	DbgPrintf(6, _T("NodeLink::execute() started for %s [%ld]"), m_name, (long)m_id);
 
@@ -171,12 +171,12 @@ void NodeLink::execute()
 	calculateCompoundStatus();
 
 	DbgPrintf(6, _T("NodeLink::execute() finished for %s [%ld]"), m_name, (long)m_id);
-}
+}*/
 
 /**
  * Apply single template check to this nodelink
  */
-void NodeLink::applyTemplate(SlmCheck *tmpl)
+/*void NodeLink::applyTemplate(SlmCheck *tmpl)
 {
 	// Check if we already have check created from this template
 	shared_ptr<SlmCheck> check;
@@ -205,12 +205,12 @@ void NodeLink::applyTemplate(SlmCheck *tmpl)
 	{
 		check->updateFromTemplate(tmpl);
 	}
-}
+}*/
 
 /**
  * Apply templates from the upper levels to this nodelink
  */
-void NodeLink::applyTemplates()
+/*void NodeLink::applyTemplates()
 {
 	SharedObjectArray<SlmCheck> templates;
 
@@ -230,20 +230,20 @@ void NodeLink::applyTemplates()
 		SlmCheck *tmpl = templates.get(j);
 		applyTemplate(tmpl);
 	}
-}
+}*/
 
 /**
  * Object deletion thread
  */
-static void DeleteNodeLink(void *arg)
+/*static void DeleteNodeLink(void *arg)
 {
 	((NodeLink *)arg)->deleteObject();
-}
+}*/
 
 /**
  * Object deletion handler
  */
-void NodeLink::onObjectDelete(UINT32 dwObjectId)
+/*void NodeLink::onObjectDelete(UINT32 dwObjectId)
 {
 	if (dwObjectId == m_nodeId)
 	{
@@ -255,4 +255,4 @@ void NodeLink::onObjectDelete(UINT32 dwObjectId)
       ThreadPoolExecute(g_mainThreadPool, DeleteNodeLink, this);
 	}
    super::onObjectDelete(dwObjectId);
-}
+}*/

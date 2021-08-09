@@ -27,7 +27,7 @@
  */
 void UptimeCalculator()
 {
-	const int calcInterval = 60; 
+	/*const int calcInterval = 60; 
 
    ThreadSetName("UptimeCalc");
 	DbgPrintf(1, _T("UptimeCalculator thread started"));
@@ -39,5 +39,5 @@ void UptimeCalculator()
 			break;
 	}
 
-	DbgPrintf(1, _T("UptimeCalculator thread terminated"));
+	DbgPrintf(1, _T("UptimeCalculator thread terminated"));*/
 }

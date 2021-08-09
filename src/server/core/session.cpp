@@ -5843,22 +5843,22 @@ void ClientSession::createObject(NXCPMessage *request)
                         }
                         break;
                      }
-                     case OBJECT_NODELINK:
+                     /*case OBJECT_NODELINK:
                         nodeId = request->getFieldAsUInt32(VID_NODE_ID);
                         if (nodeId > 0)
                         {
                            object = make_shared<NodeLink>(objectName, nodeId);
                            NetObjInsert(object, true, false);
                         }
-                        break;
+                        break;*/
                      case OBJECT_RACK:
                         object = make_shared<Rack>(objectName, (int)request->getFieldAsUInt16(VID_HEIGHT));
                         NetObjInsert(object, true, false);
                         break;
-                     case OBJECT_SLMCHECK:
-                        object = make_shared<SlmCheck>(objectName, request->getFieldAsBoolean(VID_IS_TEMPLATE));
-                        NetObjInsert(object, true, false);
-                        break;
+                     //case OBJECT_SLMCHECK:
+                        //object = make_shared<SlmCheck>(objectName, request->getFieldAsBoolean(VID_IS_TEMPLATE));
+                        //NetObjInsert(object, true, false);
+                        //break;
                      case OBJECT_SUBNET:
                      {
                         auto ipAddr = request->getFieldAsInetAddress(VID_IP_ADDRESS);
@@ -5926,9 +5926,9 @@ void ClientSession::createObject(NXCPMessage *request)
                         {
                            static_cast<Cluster&>(*parent).applyToTarget(static_pointer_cast<DataCollectionTarget>(object));
                         }
-                        if (object->getObjectClass() == OBJECT_NODELINK)
+                        if (/*object->getObjectClass() == OBJECT_NODELINK*/ false )
                         {
-                           static_cast<NodeLink&>(*object).applyTemplates();
+                           //static_cast<NodeLink&>(*object).applyTemplates();
                         }
                         else if ((object->getObjectClass() == OBJECT_NETWORKSERVICE) && request->getFieldAsBoolean(VID_CREATE_STATUS_DCI))
                         {
@@ -6095,9 +6095,9 @@ void ClientSession::changeObjectBinding(NXCPMessage *pRequest, BOOL bBind)
                   pParent->calculateCompoundStatus();
                   msg.setField(VID_RCC, RCC_SUCCESS);
 
-						if ((pParent->getObjectClass() == OBJECT_BUSINESSSERVICEROOT) || (pParent->getObjectClass() == OBJECT_BUSINESSSERVICE))
+						if (pParent->getObjectClass() == OBJECT_BUSINESSSERVICE)
 						{
-							static_cast<ServiceContainer&>(*pParent).initUptimeStats();
+							//static_cast<BusinessService&>(*pParent).initUptimeStats();
 						}
                }
                else
@@ -6120,9 +6120,9 @@ void ClientSession::changeObjectBinding(NXCPMessage *pRequest, BOOL bBind)
                {
                   static_pointer_cast<Cluster>(pParent)->removeNode(static_pointer_cast<Node>(pChild));
                }
-					else if ((pParent->getObjectClass() == OBJECT_BUSINESSSERVICEROOT) || (pParent->getObjectClass() == OBJECT_BUSINESSSERVICE))
+					else if (pParent->getObjectClass() == OBJECT_BUSINESSSERVICE)
 					{
-						static_cast<ServiceContainer&>(*pParent).initUptimeStats();
+						//static_cast<ServiceContainer&>(*pParent).initUptimeStats();
 					}
                msg.setField(VID_RCC, RCC_SUCCESS);
             }

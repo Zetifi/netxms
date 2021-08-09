@@ -29,23 +29,23 @@
  */
 BusinessService::BusinessService() : super()
 {
-	m_busy = false;
+	/*m_busy = false;
    m_pollingDisabled = false;
 	m_lastPollTime = time_t(0);
 	m_lastPollStatus = STATUS_UNKNOWN;
-	_tcscpy(m_name, _T("Default"));
+	_tcscpy(m_name, _T("Default"));*/
 }
 
 /**
  * Constructor for new service object
  */
-BusinessService::BusinessService(const TCHAR *name) : super(name)
+BusinessService::BusinessService(const TCHAR *name) : super()
 {
-	m_busy = false;
+	/*m_busy = false;
    m_pollingDisabled = false;
 	m_lastPollTime = time_t(0);
 	m_lastPollStatus = STATUS_UNKNOWN;
-	nx_strncpy(m_name, name, MAX_OBJECT_NAME);
+	nx_strncpy(m_name, name, MAX_OBJECT_NAME);*/
 }
 
 /**
@@ -58,13 +58,14 @@ BusinessService::~BusinessService()
 /**
  * Create object from database data
  */
-bool BusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
+bool BusinessService::loadFromDatabase(DB_HANDLE hdb, uint32_t id)
 {
 	if (!super::loadFromDatabase(hdb, id))
 		return false;
 
 	// now it doesn't make any sense but hopefully will do in the future
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT service_id FROM business_services WHERE service_id=?"));
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter ")
+													_T("FROM business_services WHERE service_id=?"));
 	if (hStmt == NULL)
 	{
 		DbgPrintf(4, _T("Cannot prepare select from business_services"));
@@ -86,6 +87,13 @@ bool BusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 		return FALSE;
 	}
 
+   m_id = id;
+   isPrototype = (bool)DBGetFieldULong(hResult, 0, 0);
+   prototypeId = DBGetFieldULong(hResult, 0, 1);
+	DBGetField(hResult, 0, 2, instance, 1024);
+   uint32_t instanceMethod = DBGetFieldULong(hResult, 0, 3);
+	DBGetField(hResult, 0, 4, instanceData, 1024);
+
 	DBFreeResult(hResult);
 	DBFreeStatement(hStmt);
 
@@ -93,9 +101,39 @@ bool BusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 }
 
 /**
+ * Create object from database data
+ */
+bool BusinessService::loadChecksFromDatabase(DB_HANDLE hdb)
+{
+	/*DbgPrintf(2, _T("Loading service checks..."));
+
+   DB_RESULT hResult = DBSelect(hdb, _T("SELECT id FROM slm_checks WHERE "));
+   if (hResult != nullptr)
+   {
+      int count = DBGetNumRows(hResult);
+      for(int i = 0; i < count; i++)
+      {
+         UINT32 id = DBGetFieldULong(hResult, i, 0);
+         auto check = make_shared<SlmCheck>();
+         if (check->loadFromDatabase(hdb, id))
+         {
+            NetObjInsert(check, false, false);  // Insert into indexes
+         }
+         else     // Object load failed
+         {
+            check->destroy();
+            nxlog_write(NXLOG_ERROR, _T("Failed to load service check object with ID %u from database"), id);
+         }
+      }
+      DBFreeResult(hResult);
+   }*/
+	return true;
+}
+
+/**
  * Save service to database
  */
-bool BusinessService::saveToDatabase(DB_HANDLE hdb)
+/*bool BusinessService::saveToDatabase(DB_HANDLE hdb)
 {
    if (!IsDatabaseRecordExist(hdb, _T("business_services"), _T("service_id"), m_id))
    {
@@ -106,12 +144,12 @@ bool BusinessService::saveToDatabase(DB_HANDLE hdb)
    }
 
 	return super::saveToDatabase(hdb);
-}
+}*/
 
 /**
  * Delete object from database
  */
-bool BusinessService::deleteFromDatabase(DB_HANDLE hdb)
+/*bool BusinessService::deleteFromDatabase(DB_HANDLE hdb)
 {
    bool success = super::deleteFromDatabase(hdb);
    if (success)
@@ -119,59 +157,59 @@ bool BusinessService::deleteFromDatabase(DB_HANDLE hdb)
       success = executeQueryOnObject(hdb, _T("DELETE FROM business_services WHERE service_id=?"));
    }
    return success;
-}
+}*/
 
 /**
  * Create NXCP message with object's data
  */
-void BusinessService::fillMessageInternal(NXCPMessage *pMsg, UINT32 userId)
+/*void BusinessService::fillMessageInternal(NXCPMessage *pMsg, UINT32 userId)
 {
    super::fillMessageInternal(pMsg, userId);
-}
+}*/
 
 /**
  * Modify object from message
  */
-UINT32 BusinessService::modifyFromMessageInternal(NXCPMessage *pRequest)
+/*UINT32 BusinessService::modifyFromMessageInternal(NXCPMessage *pRequest)
 {
    return super::modifyFromMessageInternal(pRequest);
-}
+}*/
 
 /**
  * Check if service is ready for poll
  */
-bool BusinessService::isReadyForPolling()
+/*bool BusinessService::isReadyForPolling()
 {
    lockProperties();
 	bool ready = (time(NULL) - m_lastPollTime > g_slmPollingInterval) && !m_busy && !m_pollingDisabled;
    unlockProperties();
    return ready;
-}
+}*/
 
 /**
  * Lock service for polling
  */
-void BusinessService::lockForPolling()
+/*void BusinessService::lockForPolling()
 {
    lockProperties();
 	m_busy = true;
    unlockProperties();
-}
+}*/
 
 /**
  * A callback for poller threads
  */
-void BusinessService::poll(PollerInfo *poller)
+/*void BusinessService::poll(PollerInfo *poller)
 {
    poller->startExecution();
    poll(NULL, 0, poller);
    delete poller;
-}
+}*/
 
 /**
  * Status poll
  */
-void BusinessService::poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller)
+/*void BusinessService::poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller)
 {
    if (IsShutdownInProgress())
    {
@@ -180,10 +218,10 @@ void BusinessService::poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *p
    }
 
 	DbgPrintf(5, _T("Started polling of business service %s [%d]"), m_name, (int)m_id);
-	m_lastPollTime = time(NULL);
+	m_lastPollTime = time(NULL);*/
 
 	// Loop through the kids and execute their either scripts or thresholds
-   readLockChildList();
+   /*readLockChildList();
 	for (int i = 0; i < getChildList().size(); i++)
 	{
 	   NetObj *object = getChildList().get(i);
@@ -192,48 +230,24 @@ void BusinessService::poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *p
 		else if (object->getObjectClass() == OBJECT_NODELINK)
 			((NodeLink*)object)->execute();
 	}
-   unlockChildList();
+   unlockChildList();*/
+
+	//readLockChildList()
 
 	// Set the status based on what the kids' been up to
-	calculateCompoundStatus();
+	//calculateCompoundStatus();
 
-	m_lastPollStatus = m_status;
+	/*m_lastPollStatus = m_status;
 	DbgPrintf(5, _T("Finished polling of business service %s [%d]"), m_name, (int)m_id);
 	m_busy = false;
-}
+}*/
 
-/**
- * Get template checks applicable for given target
- */
-void BusinessService::getApplicableTemplates(ServiceContainer *target, SharedObjectArray<SlmCheck> *templates)
-{
-	readLockChildList();
-	for(int i = 0; i < getChildList().size(); i++)
-	{
-      shared_ptr<NetObj> object = getChildList().getShared(i);
-		if ((object->getObjectClass() == OBJECT_SLMCHECK) && static_cast<SlmCheck*>(object.get())->isTemplate())
-		{
-			templates->add(static_pointer_cast<SlmCheck>(object));
-		}
-	}
-	unlockChildList();
 
-	readLockParentList();
-	for(int i = 0; i < getParentList().size(); i++)
-	{
-      NetObj *object = getParentList().get(i);
-		if (object->getObjectClass() == OBJECT_BUSINESSSERVICE)
-		{
-			static_cast<BusinessService*>(object)->getApplicableTemplates(target, templates);
-		}
-	}
-	unlockParentList();
-}
 
 /**
  * Prepare business service object for deletion
  */
-void BusinessService::prepareForDeletion()
+/*void BusinessService::prepareForDeletion()
 {
    // Prevent service from being queued for polling
    lockProperties();
@@ -254,4 +268,4 @@ void BusinessService::prepareForDeletion()
    }
 	DbgPrintf(4, _T("BusinessService::PrepareForDeletion(%s [%d]): no outstanding polls left"), m_name, (int)m_id);
    super::prepareForDeletion();
-}
+}*/

@@ -451,11 +451,11 @@ unique_ptr<ObjectArray<ObjectQueryResult>> QueryObjects(const TCHAR *query, uint
    vm->addConstant("NETWORKMAPROOT", vm->createValue(OBJECT_NETWORKMAPROOT));
    vm->addConstant("NETWORKSERVICE", vm->createValue(OBJECT_NETWORKSERVICE));
    vm->addConstant("NODE", vm->createValue(OBJECT_NODE));
-   vm->addConstant("NODELINK", vm->createValue(OBJECT_NODELINK));
+   //vm->addConstant("NODELINK", vm->createValue(OBJECT_NODELINK));
    vm->addConstant("RACK", vm->createValue(OBJECT_RACK));
    vm->addConstant("SENSOR", vm->createValue(OBJECT_SENSOR));
    vm->addConstant("SERVICEROOT", vm->createValue(OBJECT_SERVICEROOT));
-   vm->addConstant("SLMCHECK", vm->createValue(OBJECT_SLMCHECK));
+   //vm->addConstant("SLMCHECK", vm->createValue(OBJECT_SLMCHECK));
    vm->addConstant("SUBNET", vm->createValue(OBJECT_SUBNET));
    vm->addConstant("TEMPLATE", vm->createValue(OBJECT_TEMPLATE));
    vm->addConstant("TEMPLATEGROUP", vm->createValue(OBJECT_TEMPLATEGROUP));

@@ -796,12 +796,12 @@ static void QueueForPolling(NetObj *object, void *data)
 		case OBJECT_BUSINESSSERVICE:
 			{
 				auto service = static_cast<BusinessService*>(object);
-				if (service->isReadyForPolling())
+				/*if (service->isReadyForPolling())
 				{
 					service->lockForPolling();
 					nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 6, _T("Business service %d \"%s\" queued for poll"), (int)object->getId(), object->getName());
 					ThreadPoolExecuteSerialized(g_pollerThreadPool, threadKey, service, &BusinessService::poll, RegisterPoller(PollerType::BUSINESS_SERVICE, service->self()));
-				}
+				}*/
 			}
 			break;
 		case OBJECT_ZONE:

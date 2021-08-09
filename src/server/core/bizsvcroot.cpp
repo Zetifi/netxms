@@ -25,44 +25,44 @@
 /**
  * Business service tree root class default constructor
  */
-BusinessServiceRoot::BusinessServiceRoot() : super()
+/*BusinessServiceRoot::BusinessServiceRoot() : super()
 {
 	m_id = BUILTIN_OID_BUSINESSSERVICEROOT;
 	_tcscpy(m_name, _T("Business Services"));
    m_guid = uuid::generate();
 	m_status = STATUS_NORMAL;
-}
+}*/
 
 /**
  * Business service root class destructor
  */
-BusinessServiceRoot::~BusinessServiceRoot()
+/*BusinessServiceRoot::~BusinessServiceRoot()
 {
-}
+}*/
 
 /**
  * Save object to database
  */
-bool BusinessServiceRoot::saveToDatabase(DB_HANDLE hdb)
+/*bool BusinessServiceRoot::saveToDatabase(DB_HANDLE hdb)
 {
    return super::saveToDatabase(hdb);
-}
+}*/
 
 /**
  * Load properties from database
  */
-void BusinessServiceRoot::loadFromDatabase(DB_HANDLE hdb)
+/*void BusinessServiceRoot::loadFromDatabase(DB_HANDLE hdb)
 {
    loadCommonProperties(hdb);
    loadACLFromDB(hdb);
 	initUptimeStats();
-}
+}*/
 
 /**
  * Link child objects
  * This method is expected to be called only at startup, so we don't lock
  */
-void BusinessServiceRoot::linkObjects()
+/*void BusinessServiceRoot::linkObjects()
 {
    super::linkObjects();
 
@@ -88,4 +88,4 @@ void BusinessServiceRoot::linkObjects()
       DBFreeResult(hResult);
    }
    DBConnectionPoolReleaseConnection(hdb);
-}
+}*/

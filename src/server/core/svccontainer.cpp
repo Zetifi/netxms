@@ -27,20 +27,20 @@
 /**
  * Service log record ID
  */
-INT32 __EXPORT ServiceContainer::logRecordId = -1;
+//INT32 __EXPORT ServiceContainer::logRecordId = -1;
 
 /**
  * Default constructor for service service object
  */
-ServiceContainer::ServiceContainer() : super()
+/*ServiceContainer::ServiceContainer() : super()
 {
 	initServiceContainer();
-}
+}*/
 
 /**
  * Create new service container object
  */
-ServiceContainer::ServiceContainer(const TCHAR *pszName) : super(pszName, 0)
+/*ServiceContainer::ServiceContainer(const TCHAR *pszName) : super(pszName, 0)
 {
 	initServiceContainer();
 }
@@ -58,59 +58,59 @@ void ServiceContainer::initServiceContainer()
 	m_prevDiffDay = 0;
 	m_prevDiffWeek = 0;
 	m_prevDiffMonth = 0;
-}
+}*/
 
 /**
  * Create object from database data
  */
-bool ServiceContainer::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
+/*bool ServiceContainer::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 {
 	if (!super::loadFromDatabase(hdb, id))
 		return false;
 
 	initUptimeStats();
 	return true;
-}
+}*/
 
 /**
  * Save object to database
  */
-bool ServiceContainer::saveToDatabase(DB_HANDLE hdb)
+/*bool ServiceContainer::saveToDatabase(DB_HANDLE hdb)
 {
 	return super::saveToDatabase(hdb);
-}
+}*/
 
 /**
  * Delete object from database
  */
-bool ServiceContainer::deleteFromDatabase(DB_HANDLE hdb)
+/*bool ServiceContainer::deleteFromDatabase(DB_HANDLE hdb)
 {
 	return super::deleteFromDatabase(hdb);
-}
+}*/
 
 /**
  * Create NXCP message with object's data
  */
-void ServiceContainer::fillMessageInternal(NXCPMessage *pMsg, UINT32 userId)
+/*void ServiceContainer::fillMessageInternal(NXCPMessage *pMsg, UINT32 userId)
 {
    super::fillMessageInternal(pMsg, userId);
    pMsg->setField(VID_UPTIME_DAY, m_uptimeDay);
    pMsg->setField(VID_UPTIME_WEEK, m_uptimeWeek);
    pMsg->setField(VID_UPTIME_MONTH, m_uptimeMonth);
-}
+}*/
 
 /**
  * Modify object from message
  */
-UINT32 ServiceContainer::modifyFromMessageInternal(NXCPMessage *pRequest)
+/*UINT32 ServiceContainer::modifyFromMessageInternal(NXCPMessage *pRequest)
 {
    return super::modifyFromMessageInternal(pRequest);
-}
+}*/
 
 /**
  * Calculate status for compound object based on childs status
  */
-void ServiceContainer::calculateCompoundStatus(BOOL bForcedRecalc)
+/*void ServiceContainer::calculateCompoundStatus(BOOL bForcedRecalc)
 {
 	int i, iCount, iMostCriticalStatus;
 	int iOldStatus = m_status;
@@ -149,20 +149,20 @@ void ServiceContainer::calculateCompoundStatus(BOOL bForcedRecalc)
 
 	if (iOldStatus != STATUS_UNKNOWN && iOldStatus != m_status)
 		addHistoryRecord();
-}
+}*/
 
 /**
  * Set service status - use this instead of direct assignment;
  */
-void ServiceContainer::setStatus(int newStatus)
+/*void ServiceContainer::setStatus(int newStatus)
 {
 	m_status = newStatus;
-}
+}*/
 
 /**
  * Add a record to slm_service_history table
  */
-BOOL ServiceContainer::addHistoryRecord()
+/*BOOL ServiceContainer::addHistoryRecord()
 {
 	DB_RESULT hResult;
 	DB_STATEMENT hStmt;
@@ -208,12 +208,12 @@ BOOL ServiceContainer::addHistoryRecord()
 	DBFreeStatement(hStmt);
 	DBConnectionPoolReleaseConnection(hdb);
 	return TRUE;
-}
+}*/
 
 /**
  * Initialize uptime statistics (daily, weekly, monthly) by examining slm_service_history
  */
-void ServiceContainer::initUptimeStats()
+/*void ServiceContainer::initUptimeStats()
 {
 	lockProperties();
 	m_prevUptimeUpdateStatus = m_status;
@@ -222,12 +222,12 @@ void ServiceContainer::initUptimeStats()
 	m_uptimeMonth = getUptimeFromDBFor(MONTH, &m_downtimeMonth);
 	unlockProperties();
 	DbgPrintf(6, _T("ServiceContainer::initUptimeStats() %s [%d] %lf %lf %lf"), m_name, m_id, m_uptimeDay, m_uptimeWeek, m_uptimeMonth);
-}
+}*/
 
 /**
  * Calculate uptime for given period using data in database
  */
-double ServiceContainer::getUptimeFromDBFor(Period period, INT32 *downtime)
+/*double ServiceContainer::getUptimeFromDBFor(Period period, INT32 *downtime)
 {
 	time_t beginTime;
 	INT32 timediffTillNow	= ServiceContainer::getSecondsSinceBeginningOf(period, &beginTime);
@@ -278,12 +278,12 @@ double ServiceContainer::getUptimeFromDBFor(Period period, INT32 *downtime)
 
 	DBConnectionPoolReleaseConnection(hdb);
 	return percentage;
-}
+}*/
 
 /**
  * Update uptime counters
  */
-void ServiceContainer::updateUptimeStats(time_t currentTime, BOOL updateChilds)
+/*void ServiceContainer::updateUptimeStats(time_t currentTime, BOOL updateChilds)
 {
 	LONG timediffTillNow;
 	LONG downtimeBetweenPolls = 0;
@@ -348,12 +348,12 @@ void ServiceContainer::updateUptimeStats(time_t currentTime, BOOL updateChilds)
 		}
 		unlockChildList();
 	}
-}
+}*/
 
 /**
  * Calculate number of seconds since the beginning of given period
  */
-INT32 ServiceContainer::getSecondsSinceBeginningOf(Period period, time_t *beginTime)
+/*INT32 ServiceContainer::getSecondsSinceBeginningOf(Period period, time_t *beginTime)
 {
 	time_t curTime = time(NULL);
 	struct tm tmBuffer;
@@ -383,12 +383,12 @@ INT32 ServiceContainer::getSecondsSinceBeginningOf(Period period, time_t *beginT
 		*beginTime = beginTimeL;
 
 	return (INT32)(curTime - beginTimeL);
-}
+}*/
 
 /**
  * Calculate number of seconds in the current month
  */
-INT32 ServiceContainer::getSecondsInMonth()
+/*INT32 ServiceContainer::getSecondsInMonth()
 {
 	time_t curTime = time(NULL);
 	struct tm *tms;
@@ -406,16 +406,16 @@ INT32 ServiceContainer::getSecondsInMonth()
 
 	if (month == 3 || month == 5 || month == 8 || month == 10)
 		days = 30;
-	else if (month == 1) /* February */
-		days = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) ? 29 : 28;
+	else if (month == 1)*/ /* February */
+		/*days = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) ? 29 : 28;
 
 	return (INT32)(days * 24 * 3600);
-}
+}*/
 
 /**
  * Called by client session handler to check if threshold summary should be shown for this object.
  */
-bool ServiceContainer::showThresholdSummary() const
+/*bool ServiceContainer::showThresholdSummary() const
 {
 	return false;
-}
+}*/
