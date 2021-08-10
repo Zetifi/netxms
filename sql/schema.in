@@ -2263,9 +2263,12 @@ CREATE TABLE responsible_users
 CREATE TABLE auto_bind_target 
 (
    object_id integer not null,
-   bind_filter SQL_TEXT null,
-   bind_flag char(1) not null,
-   unbind_flag char(1) not null,
+   object_bind_filter SQL_TEXT null,
+   object_bind_flag char(1) not null,
+   object_unbind_flag char(1) not null,
+   dci_bind_filter SQL_TEXT null,
+   dci_bind_flag char(1) not null,
+   dci_unbind_flag char(1) not null,
    PRIMARY KEY(object_id)
 ) TABLE_TYPE;
 
