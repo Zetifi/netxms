@@ -305,9 +305,8 @@ void NetObjInsert(const shared_ptr<NetObj>& object, bool newObject, bool importe
 			case OBJECT_DASHBOARDROOT:
          case OBJECT_DASHBOARDGROUP:
 			case OBJECT_DASHBOARD:
-			case OBJECT_BUSINESSSERVICEROOT:
-			case OBJECT_BUSINESSSERVICE:
-			//case OBJECT_NODELINK:
+			case OBJECT_BUSINESS_SERVICE_ROOT:
+			case OBJECT_BUSINESS_SERVICE:
 			case OBJECT_RACK:
             break;
          case OBJECT_NODE:
@@ -406,9 +405,6 @@ void NetObjInsert(const shared_ptr<NetObj>& object, bool newObject, bool importe
          case OBJECT_CONDITION:
 				g_idxConditionById.put(object->getId(), object);
             break;
-			//case OBJECT_SLMCHECK:
-				//g_idxServiceCheckById.put(object->getId(), object);
-            //break;
 			case OBJECT_NETWORKMAP:
 				g_idxNetMapById.put(object->getId(), object);
             break;
@@ -467,9 +463,8 @@ void NetObjDeleteFromIndexes(const NetObj& object)
 		case OBJECT_DASHBOARDROOT:
       case OBJECT_DASHBOARDGROUP:
 		case OBJECT_DASHBOARD:
-		case OBJECT_BUSINESSSERVICEROOT:
-		case OBJECT_BUSINESSSERVICE:
-		//case OBJECT_NODELINK:
+		case OBJECT_BUSINESS_SERVICE_ROOT:
+		case OBJECT_BUSINESS_SERVICE:
 		case OBJECT_RACK:
 			break;
       case OBJECT_NODE:
@@ -572,9 +567,6 @@ void NetObjDeleteFromIndexes(const NetObj& object)
       case OBJECT_CONDITION:
 			g_idxConditionById.remove(object.getId());
          break;
-      //case OBJECT_SLMCHECK:
-			//g_idxServiceCheckById.remove(object.getId());
-         //break;
 		case OBJECT_NETWORKMAP:
 			g_idxNetMapById.remove(object.getId());
          break;
@@ -2015,7 +2007,7 @@ BOOL LoadObjects()
 
    // Loading business service objects
    DbgPrintf(2, _T("Loading business services..."));
-   _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("SELECT id FROM object_containers WHERE object_class=%d"), OBJECT_BUSINESSSERVICE);
+   _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("SELECT id FROM object_containers WHERE object_class=%d"), OBJECT_BUSINESS_SERVICE);
    hResult = DBSelect(hdb, query);
    if (hResult != nullptr)
    {
@@ -2037,53 +2029,6 @@ BOOL LoadObjects()
 	   }
 	   DBFreeResult(hResult);
    }
-
-   // Loading business service objects
-   /*DbgPrintf(2, _T("Loading node links..."));
-   _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("SELECT id FROM object_containers WHERE object_class=%d"), OBJECT_NODELINK);
-   hResult = DBSelect(hdb, query);
-   if (hResult != nullptr)
-   {
-	   int count = DBGetNumRows(hResult);
-	   for(int i = 0; i < count; i++)
-	   {
-		   UINT32 id = DBGetFieldULong(hResult, i, 0);
-		   auto nl = make_shared<NodeLink>();
-		   if (nl->loadFromDatabase(hdb, id))
-		   {
-			   NetObjInsert(nl, false, false);  // Insert into indexes
-		   }
-		   else     // Object load failed
-		   {
-			   nl->destroy();
-			   nxlog_write(NXLOG_ERROR, _T("Failed to load node link object with ID %u from database"), id);
-		   }
-	   }
-	   DBFreeResult(hResult);
-   }*/
-
-   // Load service check objects
-   /*DbgPrintf(2, _T("Loading service checks..."));
-   hResult = DBSelect(hdb, _T("SELECT id FROM slm_checks"));
-   if (hResult != nullptr)
-   {
-      int count = DBGetNumRows(hResult);
-      for(int i = 0; i < count; i++)
-      {
-         UINT32 id = DBGetFieldULong(hResult, i, 0);
-         auto check = make_shared<SlmCheck>();
-         if (check->loadFromDatabase(hdb, id))
-         {
-            NetObjInsert(check, false, false);  // Insert into indexes
-         }
-         else     // Object load failed
-         {
-            check->destroy();
-            nxlog_write(NXLOG_ERROR, _T("Failed to load service check object with ID %u from database"), id);
-         }
-      }
-      DBFreeResult(hResult);
-   }*/
 
    g_idxObjectById.setStartupMode(false);
    //g_idxServiceCheckById.setStartupMode(false);
@@ -2426,18 +2371,14 @@ bool IsValidParentClass(int childClass, int parentClass)
          if (childClass == OBJECT_NODE)
             return true;
          break;
-		case OBJECT_BUSINESSSERVICEROOT:
-			if (childClass == OBJECT_BUSINESSSERVICE)
+		case OBJECT_BUSINESS_SERVICE_ROOT:
+			if (childClass == OBJECT_BUSINESS_SERVICE)
             return true;
          break;
-		case OBJECT_BUSINESSSERVICE:
-			if (childClass == OBJECT_BUSINESSSERVICE)
+		case OBJECT_BUSINESS_SERVICE:
+			if (childClass == OBJECT_BUSINESS_SERVICE)
             return true;
          break;
-		/*case OBJECT_NODELINK:
-			if (childClass == OBJECT_SLMCHECK)
-            return true;
-         break;*/
       case OBJECT_ZONE:
          if ((childClass == OBJECT_SUBNET) && (g_flags & AF_ENABLE_ZONING))
             return true;

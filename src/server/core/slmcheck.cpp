@@ -27,98 +27,77 @@
  */
 SlmCheck::SlmCheck()
 {
-	m_type = SlmCheck::check_script;
+	m_id = 0;
+	m_type = 0;
 	m_script = NULL;
 	m_pCompiledScript = NULL;
-	//m_threshold = NULL;
 	m_reason[0] = 0;
-	//m_isTemplate = false;
-	//m_templateId = 0;
-	//m_currentTicketId = 0;
+	m_relatedObject = 0;
+	m_relatedDCI = 0;
+	m_currentTicket = 0;
+	_tcscpy(m_name, _T("Default check name")); //FIXME: check names in DB?
 }
-
-/**
- * Constructor for new check object
- */
-/*SlmCheck::SlmCheck(const TCHAR *name, bool isTemplate) : super()
-{
-   m_isHidden = true;
-	_tcslcpy(m_name, name, MAX_OBJECT_NAME);
-	m_type = SlmCheck::check_script;
-	m_script = NULL;
-	m_pCompiledScript = NULL;
-	m_threshold = NULL;
-	m_reason[0] = 0;
-	m_isTemplate = isTemplate;
-	m_templateId = 0;
-	m_currentTicketId = 0;
-   setCreationTime();
-}*/
-
-
-//
-// Used to create a new object from a check template
-//
-
-/*SlmCheck::SlmCheck(SlmCheck *tmpl) : super()
-{
-   m_isHidden = true;
-	_tcslcpy(m_name, tmpl->m_name, MAX_OBJECT_NAME);
-	m_type = tmpl->m_type;
-	m_script = ((m_type == check_script) && (tmpl->m_script != NULL)) ? _tcsdup(tmpl->m_script) : NULL;
-	m_pCompiledScript = NULL;
-	m_threshold = NULL;
-	m_reason[0] = 0;
-	m_isTemplate = false;
-	m_templateId = tmpl->getId();
-	m_currentTicketId = 0;
-	compileScript();
-   setCreationTime();
-}*/
 
 /**
  * Service class destructor
  */
 SlmCheck::~SlmCheck()
 {
-	//delete m_threshold;
 	MemFree(m_script);
 	delete m_pCompiledScript;
 }
 
-/**
- * Update this check from a check template
- */
-/*void SlmCheck::updateFromTemplate(SlmCheck *tmpl)
+void SlmCheck::modifyFromMessage(NXCPMessage *request)
 {
-	lockProperties();
-	tmpl->lockProperties();
-	DbgPrintf(4, _T("Updating service check %s [%d] from service check template template %s [%d]"), m_name, m_id, tmpl->getName(), tmpl->getId());
+	if (request->isFieldExist(VID_SLMCHECK_ID))
+   {
+      m_id = request->getFieldAsUInt32(VID_SLMCHECK_ID);
+   }
+	if (request->isFieldExist(VID_SLMCHECK_TYPE))
+   {
+      m_type = request->getFieldAsUInt32(VID_SLMCHECK_TYPE);
+   }
+	if (request->isFieldExist(VID_SLMCHECK_RELATED_OBJECT))
+   {
+      m_relatedObject = request->getFieldAsUInt32(VID_SLMCHECK_RELATED_OBJECT);
+   }
+	if (request->isFieldExist(VID_SLMCHECK_RELATED_DCI))
+   {
+      m_relatedDCI = request->getFieldAsUInt32(VID_SLMCHECK_RELATED_DCI);
+   }
+	if (request->isFieldExist(VID_SLMCHECK_CURRENT_TICKET))
+   {
+      m_currentTicket = request->getFieldAsUInt32(VID_SLMCHECK_CURRENT_TICKET);
+   }
+	if (request->isFieldExist(VID_SCRIPT))
+   {
+		MemFree(m_script);
+      m_script = request->getFieldAsString(VID_SCRIPT);
+		compileScript();
+   }
+}
 
-	delete m_threshold;
-	free(m_script);
-	delete m_pCompiledScript;
-
-	_tcslcpy(m_name, tmpl->m_name, MAX_OBJECT_NAME);
-	m_type = tmpl->m_type;
-	m_script = ((m_type == check_script) && (tmpl->m_script != NULL)) ? _tcsdup(tmpl->m_script) : NULL;
-	m_threshold = NULL;
-	m_reason[0] = 0;
-	m_isTemplate = false;
+void SlmCheck::loadFromSelect(DB_RESULT hResult, int row)
+{
+	m_id = DBGetFieldULong(hResult, row, 0);
+	m_type = DBGetFieldULong(hResult, row, 1);
+	m_relatedObject = DBGetFieldULong(hResult, row, 2);
+	m_relatedDCI = DBGetFieldULong(hResult, row, 3);
+	m_currentTicket = DBGetFieldULong(hResult, row, 4);
+	MemFree(m_script);
+	m_script = DBGetField(hResult, row, 5, nullptr, 0);
 	compileScript();
 
-	tmpl->unlockProperties();
-
-	setModified(MODIFY_COMMON_PROPERTIES | MODIFY_OTHER);
-	unlockProperties();
-}*/
+	// Load access list
+	//loadACLFromDB(hdb); FIXME: check this
+}
 
 /**
  * Compile script if there is one
  */
 void SlmCheck::compileScript()
 {
-	if (m_type != check_script || m_script == NULL)
+	if (m_type != SCRIPT || m_script == NULL)
 	   return;
 
    const int errorMsgLen = 512;
@@ -135,65 +114,6 @@ void SlmCheck::compileScript()
       nxlog_write(NXLOG_WARNING, _T("Failed to compile script for service check object %s [%u] (%s)"), _T("Default Name"), m_id, errorMsg);
    }
 }
-
-/**
- * Create object from database data
- */
-/*bool SlmCheck::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
-{
-	UINT32 thresholdId;
-
-	m_id = id;
-
-	if (!loadCommonProperties(hdb))
-		return false;
-
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT type,content,threshold_id,template_id,current_ticket,is_template,reason FROM slm_checks WHERE id=?"));
-	if (hStmt == NULL)
-	{
-		DbgPrintf(4, _T("Cannot prepare select from slm_checks"));
-		return false;
-	}
-	DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_id);
-
-	DB_RESULT hResult = DBSelectPrepared(hStmt);
-	if (hResult == NULL)
-	{
-		DBFreeStatement(hStmt);
-		return false;
-	}
-
-	if (DBGetNumRows(hResult) == 0)
-	{
-		DBFreeResult(hResult);
-		DBFreeStatement(hStmt);
-		DbgPrintf(4, _T("Cannot load service check object %d - record missing"), (int)m_id);
-		return false;
-	}
-
-	m_type = static_cast<SlmCheck::CheckType>(DBGetFieldLong(hResult, 0, 0));
-	m_script = DBGetField(hResult, 0, 1, NULL, 0);
-	thresholdId = DBGetFieldULong(hResult, 0, 2);
-	m_templateId = DBGetFieldULong(hResult, 0, 3);
-	m_currentTicketId = DBGetFieldULong(hResult, 0, 4);
-	m_isTemplate = DBGetFieldLong(hResult, 0, 5) ? true : false;
-	DBGetField(hResult, 0, 6, m_reason, 256);
-
-	if (thresholdId > 0)
-	{
-		// FIXME: load threshold
-	}
-
-	compileScript();
-
-	DBFreeResult(hResult);
-	DBFreeStatement(hStmt);
-
-	// Load access list
-	loadACLFromDB(hdb);
-
-	return true;
-}*/
 
 /**
  * Save service check to database
@@ -309,37 +229,23 @@ void SlmCheck::compileScript()
 }*/
 
 /**
- * Set check script. Should be called with object properties locked.
- */
-void SlmCheck::setScript(const TCHAR *script)
-{
-   /*delete_and_null(m_pCompiledScript);
-	if (script != NULL)
-	{
-		MemFree(m_script);
-		m_script = _tcsdup(script);
-		compileScript();
-	}
-	else
-	{
-		MemFreeAndNull(m_script);
-	}
-	setModified(MODIFY_OTHER);*/
-}
-
-/**
  * Execute check
  */
-void SlmCheck::execute()
+uint32_t SlmCheck::execute()
 {
-	/*if (m_isTemplate)
-		return;
-
-	UINT32 oldStatus = m_status;
-
+	uint32_t oldStatus = m_status;
 	switch (m_type)
 	{
-		case check_script:
+		case 0: //Object
+			{
+				shared_ptr<NetObj> obj = FindObjectById(m_relatedObject);
+				if (obj != nullptr)
+				{
+					m_status = obj->getStatus();
+				}
+			}
+			break;
+		case 1: //Script
 			if (m_pCompiledScript != NULL)
 			{
 				NXSL_VariableSystem *pGlobals = NULL;
@@ -373,23 +279,31 @@ void SlmCheck::execute()
 				m_status = STATUS_UNKNOWN;
 			}
 			break;
-		case check_threshold:
+		case 2: //DCI
+			{
+				shared_ptr<NetObj> obj = FindObjectById(m_relatedObject);
+				if (obj != nullptr && obj->isDataCollectionTarget())
+				{
+					shared_ptr<DataCollectionTarget> target = static_pointer_cast<DataCollectionTarget>(obj);
+					//FIXME: wrong, need to rewrite
+					m_status = STATUS_NORMAL;
+				}
+			}
+			break;
 		default:
 			DbgPrintf(4, _T("SlmCheck::execute() called for undefined check type, check %s/%ld"), m_name, (long)m_id);
 			m_status = STATUS_UNKNOWN;
 			break;
 	}
 
-	lockProperties();
 	if (m_status != oldStatus)
 	{
 		if (m_status == STATUS_CRITICAL)
 			insertTicket();
 		else
 			closeTicket();
-		setModified(MODIFY_COMMON_PROPERTIES);
 	}
-	unlockProperties();*/
+	return m_status;
 }
 
 /**
@@ -466,34 +380,17 @@ void SlmCheck::closeTicket()
  * Get related node object for use in NXSL script
  * Will return NXSL_Value of type NULL if there are no associated node
  */
-/*NXSL_Value *SlmCheck::getNodeObjectForNXSL(NXSL_VM *vm)
+NXSL_Value *SlmCheck::getNodeObjectForNXSL(NXSL_VM *vm)
 {
-	NXSL_Value *value = NULL;
-	UINT32 nodeId = 0;
-
-	readLockParentList();
-	for(int i = 0; i < getParentList().size(); i++)
+	NXSL_Value *value = nullptr;
+	shared_ptr<NetObj> node = FindObjectById(m_relatedObject);
+	if ((node != nullptr) && (node->getObjectClass() == OBJECT_NODE)) //FIXME: Maybe any netobj?
 	{
-	   NetObj *object = getParentList().get(i);
-		if (object->getObjectClass() == OBJECT_NODELINK)
-		{
-			nodeId = ((NodeLink *)object)->getNodeId();
-			break;
-		}
-	}
-	unlockParentList();
-
-	if (nodeId != 0)
-	{
-		shared_ptr<NetObj> node = FindObjectById(nodeId);
-		if ((node != NULL) && (node->getObjectClass() == OBJECT_NODE))
-		{
-			value = node->createNXSLObject(vm);
-		}
+		value = node->createNXSLObject(vm);
 	}
 
-	return (value != NULL) ? value : vm->createValue();
-}*/
+	return (value != nullptr) ? value : vm->createValue();
+}
 
 /**
  * Object deletion handler

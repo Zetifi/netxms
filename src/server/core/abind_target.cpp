@@ -132,7 +132,7 @@ bool AutoBindTarget::loadFromDatabase(DB_HANDLE hdb, UINT32 objectId)
 {
    TCHAR szQuery[256];
 
-   _sntprintf(szQuery, sizeof(szQuery) / sizeof(TCHAR), _T("SELECT bind_filter,bind_flag,unbind_flag FROM auto_bind_target WHERE object_id=%d"), objectId);
+   _sntprintf(szQuery, sizeof(szQuery) / sizeof(TCHAR), _T("SELECT object_bind_filter,object_bind_flag,object_unbind_flag FROM auto_bind_target WHERE object_id=%d"), objectId);
    DB_RESULT hResult = DBSelect(hdb, szQuery);
    if (hResult == nullptr)
       return false;
@@ -157,11 +157,11 @@ bool AutoBindTarget::saveToDatabase(DB_HANDLE hdb)
    DB_STATEMENT hStmt;
    if (IsDatabaseRecordExist(hdb, _T("auto_bind_target"), _T("object_id"), m_this->getId()))
    {
-      hStmt = DBPrepare(hdb, _T("UPDATE auto_bind_target SET bind_filter=?,bind_flag=?,unbind_flag=? WHERE object_id=?"));
+      hStmt = DBPrepare(hdb, _T("UPDATE auto_bind_target SET object_bind_filter=?,object_bind_flag=?,object_unbind_flag=? WHERE object_id=?"));
    }
    else
    {
-      hStmt = DBPrepare(hdb, _T("INSERT INTO auto_bind_target (bind_filter,bind_flag,unbind_flag,object_id) VALUES (?,?,?,?)"));
+      hStmt = DBPrepare(hdb, _T("INSERT INTO auto_bind_target (object_bind_filter,object_bind_flag,object_unbind_flag,object_id) VALUES (?,?,?,?)"));
    }
    if (hStmt != nullptr)
    {

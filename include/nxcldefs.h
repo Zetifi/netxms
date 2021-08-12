@@ -126,8 +126,8 @@
 #define OBJECT_NETWORKMAP            21
 #define OBJECT_DASHBOARDROOT         22
 #define OBJECT_DASHBOARD             23
-#define OBJECT_BUSINESSSERVICEROOT   27
-#define OBJECT_BUSINESSSERVICE       28
+#define OBJECT_BUSINESS_SERVICE_ROOT 27
+#define OBJECT_BUSINESS_SERVICE      28
 //#define OBJECT_NODELINK              29
 //#define OBJECT_SLMCHECK              30
 #define OBJECT_MOBILEDEVICE          31

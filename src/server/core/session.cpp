@@ -1773,6 +1773,15 @@ void ClientSession::processRequest(NXCPMessage *request)
       case CMD_2FA_DELETE_USER_BINDING:
          deleteUser2FABinding(request);
          break;
+      case CMD_BUSINESS_SERVICE_GET_CHECK_LIST:
+         businessServiceGetCheckList(request);
+         break;
+      case CMD_BUSINESS_SERVICE_UPDATE_CHECK:
+         businessServiceModifyCheck(request);
+         break;
+      case CMD_BUSINESS_SERVICE_DELETE_CHECK:
+         businessServiceDeleteCheck(request);
+         break;
       default:
          if ((code >> 8) == 0x11)
          {
@@ -5749,7 +5758,7 @@ void ClientSession::createObject(NXCPMessage *request)
                   TCHAR deviceId[MAX_OBJECT_NAME];
                   switch(objectClass)
                   {
-                     case OBJECT_BUSINESSSERVICE:
+                     case OBJECT_BUSINESS_SERVICE:
                         object = make_shared<BusinessService>(objectName);
                         NetObjInsert(object, true, false);
                         break;
@@ -6094,11 +6103,6 @@ void ClientSession::changeObjectBinding(NXCPMessage *pRequest, BOOL bBind)
                   ObjectTransactionEnd();
                   pParent->calculateCompoundStatus();
                   msg.setField(VID_RCC, RCC_SUCCESS);
-
-						if (pParent->getObjectClass() == OBJECT_BUSINESSSERVICE)
-						{
-							//static_cast<BusinessService&>(*pParent).initUptimeStats();
-						}
                }
                else
                {
@@ -6120,10 +6124,6 @@ void ClientSession::changeObjectBinding(NXCPMessage *pRequest, BOOL bBind)
                {
                   static_pointer_cast<Cluster>(pParent)->removeNode(static_pointer_cast<Node>(pChild));
                }
-					else if (pParent->getObjectClass() == OBJECT_BUSINESSSERVICE)
-					{
-						//static_cast<ServiceContainer&>(*pParent).initUptimeStats();
-					}
                msg.setField(VID_RCC, RCC_SUCCESS);
             }
          }
@@ -15962,3 +15962,71 @@ void ClientSession::deleteUser2FABinding(NXCPMessage *request)
    }
    sendMessage(&msg);
 }
+
+void GetCheckList(uint32_t serviceId, NXCPMessage *response);
+uint32_t ModifyCheck(NXCPMessage *request);
+uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId);
+
+/**
+ *
+ */
+void ClientSession::businessServiceGetCheckList(NXCPMessage *request)
+{
+   NXCPMessage msg(CMD_REQUEST_COMPLETED, request->getId());
+   uint32_t userId = request->getFieldAsUInt32(VID_USER_ID);
+   if ((userId == m_dwUserId) || (m_systemAccessRights & SYSTEM_ACCESS_MANAGE_USERS)) //FIXME: access level?
+   {
+      GetCheckList(request->getFieldAsUInt32(VID_OBJECT_ID), &msg);
+      msg.setField(VID_RCC, RCC_SUCCESS);
+   }
+   else
+   {
+      TCHAR buffer[MAX_USER_NAME];
+      writeAuditLog(AUDIT_SECURITY, false, 0, _T("Access denied on Business Service Get Check List method for user \"%s\""), ResolveUserId(userId, buffer, true));
+      msg.setField(VID_RCC, RCC_ACCESS_DENIED);
+   }
+   sendMessage(&msg);
+}
+
+
+/**
+ *
+ */
+void ClientSession::businessServiceModifyCheck(NXCPMessage *request)
+{
+   NXCPMessage msg(CMD_REQUEST_COMPLETED, request->getId());
+   uint32_t userId = request->getFieldAsUInt32(VID_USER_ID);
+   if ((userId == m_dwUserId) || (m_systemAccessRights & SYSTEM_ACCESS_MANAGE_USERS))
+   {
+      msg.setField(VID_RCC, ModifyCheck(request));
+   }
+   else
+   {
+      TCHAR buffer[MAX_USER_NAME];
+      writeAuditLog(AUDIT_SECURITY, false, 0, _T("Access denied on Business Service Modify Check method for user \"%s\""), ResolveUserId(userId, buffer, true));
+      msg.setField(VID_RCC, RCC_ACCESS_DENIED);
+   }
+   sendMessage(&msg);
+}
+
+
+/**
+ *
+ */
+void ClientSession::businessServiceDeleteCheck(NXCPMessage *request)
+{
+   NXCPMessage msg(CMD_REQUEST_COMPLETED, request->getId());
+   uint32_t userId = request->getFieldAsUInt32(VID_USER_ID);
+   if ((userId == m_dwUserId) || (m_systemAccessRights & SYSTEM_ACCESS_MANAGE_USERS))
+   {
+      msg.setField(VID_RCC, DeleteCheck(request->getFieldAsUInt32(VID_OBJECT_ID), request->getFieldAsUInt32(VID_SLMCHECK_ID)));
+   }
+   else
+   {
+      TCHAR buffer[MAX_USER_NAME];
+      writeAuditLog(AUDIT_SECURITY, false, 0, _T("Access denied on Business Service Delete Check method for user \"%s\""), ResolveUserId(userId, buffer, true));
+      msg.setField(VID_RCC, RCC_ACCESS_DENIED);
+   }
+   sendMessage(&msg);
+}
+

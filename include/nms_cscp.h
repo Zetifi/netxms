@@ -679,6 +679,9 @@ typedef struct
 #define CMD_WEB_SERVICE_CUSTOM_REQUEST    0x01B8
 #define CMD_MERGE_FILES                   0x01B9
 #define CMD_FILEMGR_MERGE_FILES           0x01BA
+#define CMD_BUSINESS_SERVICE_GET_CHECK_LIST 0x01BB
+#define CMD_BUSINESS_SERVICE_UPDATE_CHECK 0x01BC
+#define CMD_BUSINESS_SERVICE_DELETE_CHECK 0x01BD
 
 #define CMD_RS_LIST_REPORTS               0x1100
 #define CMD_RS_GET_REPORT_DEFINITION      0x1101
@@ -1458,6 +1461,11 @@ typedef struct
 #define VID_WEB_SWC_ERROR_TEXT      ((uint32_t)765)
 #define VID_REQUEST_DATA            ((uint32_t)766)
 #define VID_ENABLE_FILE_UPLOAD_RESUMING ((uint32_t)767)
+#define VID_SLMCHECKS_COUNT         ((uint32_t)768)
+#define VID_SLMCHECK_ID             ((uint32_t)769)
+#define VID_SLMCHECK_RELATED_OBJECT ((uint32_t)770)
+#define VID_SLMCHECK_RELATED_DCI    ((uint32_t)771)
+#define VID_SLMCHECK_CURRENT_TICKET ((uint32_t)772)
 
 // Base variabe for single threshold in message
 #define VID_THRESHOLD_BASE          ((UINT32)0x00800000)
@@ -1699,6 +1707,8 @@ typedef struct
 #define VID_ZONE_SNMP_PORT_LIST_BASE         ((UINT32)0x10000000)
 
 #define VID_2FA_METHODS_LIST_BASE   ((uint32_t)0x10000000)
+
+#define VID_SLM_CHECKS_LIST_BASE   ((uint32_t)0x10000000)
 
 #ifdef __cplusplus
 

@@ -894,6 +894,9 @@ private:
    void getUser2FABindingDetails(NXCPMessage *request);
    void modifyUser2FABinding(NXCPMessage *request);
    void deleteUser2FABinding(NXCPMessage *request);
+   void businessServiceGetCheckList(NXCPMessage *request);
+   void businessServiceModifyCheck(NXCPMessage *request);
+   void businessServiceDeleteCheck(NXCPMessage *request);
    void alarmUpdateWorker(Alarm *alarm);
    void sendActionDBUpdateMessage(NXCP_MESSAGE *msg);
    void sendObjectUpdates();

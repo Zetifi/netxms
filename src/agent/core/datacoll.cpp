@@ -1800,3 +1800,4 @@ LONG H_DataCollectorQueueSize(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, 
    ret_uint(value, count);
    return SYSINFO_RC_SUCCESS;
 }
+
