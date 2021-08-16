@@ -24,85 +24,25 @@
 
 #define DEBUG_TAG _T("business.service")
 
+/* ************************************
+ *
+ * Base Business Service class
+ *
+ * *************************************
+*/
+
 /**
  * Service default constructor
  */
-BusinessService::BusinessService() : m_checks(10, 10, Ownership::True), super()
+BaseBusinessService::BaseBusinessService(uint32_t id) : m_checks(10, 10, Ownership::True)
 {
-	/*m_busy = false;
-   m_pollingDisabled = false;
-	m_lastPollTime = time_t(0);
-	m_lastPollStatus = STATUS_UNKNOWN;
-	_tcscpy(m_name, _T("Default"));*/
-}
-
-/**
- * Constructor for new service object
- */
-BusinessService::BusinessService(const TCHAR *name) : super()
-{
-	/*m_busy = false;
-   m_pollingDisabled = false;
-	m_lastPollTime = time_t(0);
-	m_lastPollStatus = STATUS_UNKNOWN;
-	nx_strncpy(m_name, name, MAX_OBJECT_NAME);*/
-}
-
-/**
- * Destructor
- */
-BusinessService::~BusinessService()
-{
-}
-
-/**
- * Create object from database data
- */
-bool BusinessService::loadFromDatabase(DB_HANDLE hdb, uint32_t id)
-{
-	if (!super::loadFromDatabase(hdb, id))
-		return false;
-
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter ")
-													_T("FROM business_services WHERE service_id=?"));
-	if (hStmt == NULL)
-	{
-		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from business_services"));
-		return false;
-	}
-	DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_id);
-	DB_RESULT hResult = DBSelectPrepared(hStmt);
-	if (hResult == NULL)
-	{
-		DBFreeStatement(hStmt);
-		return false;
-	}
-
-	if (DBGetNumRows(hResult) == 0)
-	{
-		DBFreeResult(hResult);
-		DBFreeStatement(hStmt);
-		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot load business service object %ld - record missing"), (long)m_id);
-		return false;
-	}
-
    m_id = id;
-   isPrototype = (bool)DBGetFieldULong(hResult, 0, 0);
-   prototypeId = DBGetFieldULong(hResult, 0, 1);
-	DBGetField(hResult, 0, 2, instance, 1024);
-   uint32_t instanceMethod = DBGetFieldULong(hResult, 0, 3);
-	DBGetField(hResult, 0, 4, instanceData, 1024);
-
-	DBFreeResult(hResult);
-	DBFreeStatement(hStmt);
-
-	return true;
 }
 
 /**
- * Create object from database data
+ * Load SLM checks from database
  */
-bool BusinessService::loadChecksFromDatabase(DB_HANDLE hdb)
+bool BaseBusinessService::loadChecksFromDatabase(DB_HANDLE hdb)
 {
 	nxlog_debug_tag(DEBUG_TAG, 4, _T("Loading service checks for business service %ld"), (long)m_id);
 
@@ -133,6 +73,32 @@ bool BusinessService::loadChecksFromDatabase(DB_HANDLE hdb)
 	return true;
 }
 
+/* ************************************
+ *
+ * Business Service class
+ *
+ * *************************************
+*/
+
+/**
+ * Constructor for new service object
+ */
+BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance) : BaseBusinessService(id)
+{
+	/*m_busy = false;
+   m_pollingDisabled = false;
+	m_lastPollTime = time_t(0);
+	m_lastPollStatus = STATUS_UNKNOWN;*/
+	_tcslcpy(m_name, name, MAX_OBJECT_NAME);
+}
+
+/**
+ * Destructor
+ */
+BusinessService::~BusinessService()
+{
+}
+
 
 void BusinessService::deleteCheck(uint32_t checkId)
 {
@@ -145,6 +111,68 @@ void BusinessService::deleteCheck(uint32_t checkId)
       }
    }
 }
+
+BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, uint32_t id)
+{
+   BaseBusinessService* service = nullptr;
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT prototype_id,instance,instance_method,instance_data,instance_filter ")
+													_T("FROM business_services WHERE service_id=?"));
+	if (hStmt == NULL)
+	{
+		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from business_services"));
+		return service;
+	}
+
+	DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, id);
+	DB_RESULT hResult = DBSelectPrepared(hStmt);
+	if (hResult == NULL)
+	{
+		DBFreeStatement(hStmt);
+		return service;
+	}
+
+	if (DBGetNumRows(hResult) == 0)
+	{
+		DBFreeResult(hResult);
+		DBFreeStatement(hStmt);
+		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot load business service object %ld - record missing"), (long)id);
+		return service;
+	}
+
+   TCHAR instance[1024];
+   TCHAR instanceDiscoveryData[1024];
+   uint32_t prototypeId = DBGetFieldULong(hResult, 0, 0);
+	DBGetField(hResult, 0, 1, instance, 1024);
+   uint32_t instanceDiscoveryMethod = DBGetFieldULong(hResult, 0, 2);
+	DBGetField(hResult, 0, 3, instanceDiscoveryData, 1024);
+
+   if(instanceDiscoveryMethod != 0)
+   {
+      service = new BusinessServicePrototype(id, instanceDiscoveryMethod, instanceDiscoveryData);
+   }
+   else
+   {
+      service = new BusinessService(id, prototypeId, instance);
+   }
+
+	DBFreeResult(hResult);
+	DBFreeStatement(hStmt);
+
+   if (!service->loadChecksFromDatabase(hdb))
+   {
+      delete_and_null(service);
+   }
+
+   /*if(!service->loadFromDatabase(hdb))
+   {
+      //if (!super::loadFromDatabase(hdb, id))
+		//return false;
+      delete_and_null(service);
+   }*/
+   return service;
+}
+
+
 /**
  * Save service to database
  */
@@ -265,6 +293,14 @@ void BusinessService::poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *p
    super::prepareForDeletion();
 }*/
 
+
+/* ************************************
+ *
+ * Functions
+ *
+ * *************************************
+*/
+
 void GetCheckList(uint32_t serviceId, NXCPMessage *response)
 {
    shared_ptr<BusinessService> service = static_pointer_cast<BusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
@@ -287,7 +323,6 @@ void GetCheckList(uint32_t serviceId, NXCPMessage *response)
    response->setField(VID_SLMCHECKS_COUNT, counter);
    
 }
-
 
 uint32_t ModifyCheck(NXCPMessage *request)
 {
@@ -331,4 +366,28 @@ uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
    service->deleteCheck(checkId);
 
    return RCC_SUCCESS;
+}
+
+
+/* ************************************
+ *
+ * Business Service Prototype
+ *
+ * *************************************
+*/
+
+/**
+ * Service prototype constructor
+ */
+BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData) : BaseBusinessService(id)
+{
+   m_instanceDiscoveryMethod = instanceDiscoveryMethod;
+   _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, sizeof(m_instanceDiscoveryData));
+}
+
+/**
+ * Destructor
+ */
+BusinessServicePrototype::~BusinessServicePrototype()
+{
 }

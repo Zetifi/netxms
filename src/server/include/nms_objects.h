@@ -1190,6 +1190,7 @@ public:
    virtual bool showThresholdSummary() const;
    virtual bool isEventSource() const;
    virtual bool isDataCollectionTarget() const;
+   virtual bool isPollable() const;
 
    void setStatusCalculation(int method, int arg1 = 0, int arg2 = 0, int arg3 = 0, int arg4 = 0);
    void setStatusPropagation(int method, int arg1 = 0, int arg2 = 0, int arg3 = 0, int arg4 = 0);
@@ -1257,8 +1258,12 @@ private:
 protected:
    TCHAR *m_bindFilterSource;
    NXSL_Program *m_bindFilter;
+   TCHAR *m_bindFilterSourceDCI;
+   NXSL_Program *m_bindFilterDCI;
    bool m_autoBindFlag;
    bool m_autoUnbindFlag;
+   bool m_autoBindFlagDCI;
+   bool m_autoUnbindFlagDCI;
 
    void modifyFromMessage(NXCPMessage *request);
    void fillMessage(NXCPMessage *msg);
@@ -2070,6 +2075,13 @@ enum GeoLocationControlMode
    GEOLOCATION_NO_CONTROL = 0,
    GEOLOCATION_RESTRICTED_AREAS = 1,
    GEOLOCATION_ALLOWED_AREAS = 2
+};
+
+class InstanceDiscoveryPollable
+{
+public:
+   void instanceDiscoveryPoll(PollerInfo *poller) { instanceDiscoveryPoll(poller, nullptr, 0); }
+   virtual void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId) = 0;
 };
 
 /**
@@ -4414,38 +4426,51 @@ public:
 /**
  * Business service object
  */
-class NXCORE_EXPORTABLE BusinessService : public AbstractContainer
+class NXCORE_EXPORTABLE BaseBusinessService : public AbstractContainer
 {
 protected:
-   typedef AbstractContainer super;
-
-protected:
-
    ObjectArray<SlmCheck> m_checks;
    uint32_t m_id;
-   bool isPrototype;
-   uint32_t prototypeId;
-   TCHAR instance[1024];
-   uint32_t instanceMethod;
-   TCHAR instanceData[1024];
+
+   bool loadChecksFromDatabase(DB_HANDLE hdb);
+   BaseBusinessService(uint32_t id);
+
+public:
+   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; } //TODO: DO we need another class for Prototypes?
+   ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
+   void addCheck(SlmCheck* check) { m_checks.add(check); }
+   void deleteCheck(uint32_t checkId);
+
+   static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);
+};
+
+/**
+ * Business service object
+ */
+class NXCORE_EXPORTABLE BusinessService : public BaseBusinessService
+{
+protected:
+   uint32_t m_prototypeId;
+   TCHAR m_instance[1024];
 
    /*bool m_busy;
    bool m_pollingDisabled;
-   time_t m_lastPollTime;
-   int m_lastPollStatus;*/
+   time_t m_lastPollTime;*/
+   //uint32_t m_lastPollStatus;
 
    /*virtual void prepareForDeletion() override;
 
    virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
    virtual UINT32 modifyFromMessageInternal(NXCPMessage *pRequest) override;*/
 
+   
+
 public:
-   BusinessService();
-   BusinessService(const TCHAR *name);
+   BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance);
    virtual ~BusinessService();
 
-   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; }
-   bool loadChecksFromDatabase(DB_HANDLE hdb);
+
+   
 
    virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
    /*virtual bool saveToDatabase(DB_HANDLE hdb) override;
@@ -4455,10 +4480,48 @@ public:
    void lockForPolling();
    void poll(PollerInfo *poller);
    void poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller);
+};
 
-   ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
-   void addCheck(SlmCheck* check) { m_checks.add(check); }
-   void deleteCheck(uint32_t checkId);
+/**
+ * Business service object
+ */
+class NXCORE_EXPORTABLE BusinessServicePrototype : public BaseBusinessService, public InstanceDiscoveryPollable
+{
+protected:
+   uint32_t m_instanceDiscoveryMethod;
+   TCHAR m_instanceDiscoveryData[1024];
+
+   /*bool m_busy;
+   bool m_pollingDisabled;
+   time_t m_lastPollTime;*/
+   //uint32_t m_lastPollStatus;
+
+   /*virtual void prepareForDeletion() override;
+
+   virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
+   virtual UINT32 modifyFromMessageInternal(NXCPMessage *pRequest) override;*/
+
+
+
+public:
+
+   BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData);
+   virtual ~BusinessServicePrototype();
+
+
+
+   virtual bool loadFromDatabase(DB_HANDLE hdb) override;
+   /*virtual bool saveToDatabase(DB_HANDLE hdb) override;
+   virtual bool deleteFromDatabase(DB_HANDLE hdb) override;*/
+
+   /*bool isReadyForPolling();
+   void lockForPolling();
+   void poll(PollerInfo *poller);
+   void poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller);*/
+
+   virtual void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId) override;
+
+
 };
 
 /**

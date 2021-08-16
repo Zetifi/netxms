@@ -132,7 +132,7 @@ bool AutoBindTarget::loadFromDatabase(DB_HANDLE hdb, UINT32 objectId)
 {
    TCHAR szQuery[256];
 
-   _sntprintf(szQuery, sizeof(szQuery) / sizeof(TCHAR), _T("SELECT object_bind_filter,object_bind_flag,object_unbind_flag FROM auto_bind_target WHERE object_id=%d"), objectId);
+   _sntprintf(szQuery, sizeof(szQuery) / sizeof(TCHAR), _T("SELECT object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag FROM auto_bind_target WHERE object_id=%d"), objectId);
    DB_RESULT hResult = DBSelect(hdb, szQuery);
    if (hResult == nullptr)
       return false;

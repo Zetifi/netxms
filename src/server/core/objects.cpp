@@ -2012,9 +2012,10 @@ BOOL LoadObjects()
    if (hResult != nullptr)
    {
 	   int count = DBGetNumRows(hResult);
-	   for(int i = 0; i < count; i++)
+	   for (int i = 0; i < count; i++)
 	   {
-		   UINT32 id = DBGetFieldULong(hResult, i, 0);
+		   uint32_t id = DBGetFieldULong(hResult, i, 0);
+         auto service = BusinessService::createBusinessService(hdb, id);
 		   auto service = make_shared<BusinessService>();
 		   if (service->loadFromDatabase(hdb, id))
 		   {
