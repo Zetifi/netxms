@@ -1439,11 +1439,9 @@ public class NXCSession
             break;
          case AbstractObject.OBJECT_BUSINESSSERVICE:
             object = new BusinessService(msg, this);
-            System.out.println("#### Service Came: " + object.getObjectName());
             break;
          case AbstractObject.OBJECT_BUSINESSSERVICEROOT:
             object = new BusinessServiceRoot(msg, this);
-            System.out.println("#### root Service Came: " + object.getObjectName());
             break;
          case AbstractObject.OBJECT_CHASSIS:
             object = new Chassis(msg, this);
@@ -12670,6 +12668,7 @@ public class NXCSession
    public List<ServiceCheck> getBusinessServiceChecks(long serviceId) throws NXCException, IOException
    {
       final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_GET_CHECK_LIST);
+      msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)serviceId);
       sendMessage(msg);
       final NXCPMessage response = waitForRCC(msg.getMessageId());
       List<ServiceCheck> checks = new ArrayList<ServiceCheck>();

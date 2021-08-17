@@ -36,11 +36,11 @@ import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.BusinessService;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
+import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.SortableTreeViewer;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.objects.views.helpers.BusinessServiceCheckFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.BusinessServiceCheckLabelProvider;
-import org.netxms.nxmc.modules.objects.views.helpers.ComponentTreeContentProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
@@ -60,7 +60,7 @@ public class BusinessServiceChecksView extends ObjectView
    public static final int COLUMN_FAIL_REASON = 4;
 
    private NXCSession session;
-   private SortableTreeViewer viewer;
+   private SortableTableViewer viewer;
    private BusinessServiceCheckLabelProvider labelProvider;
    private Action actionEdit;
    private Action actionCreate;
@@ -93,21 +93,19 @@ public class BusinessServiceChecksView extends ObjectView
             i18n.tr("Reason")
          };
       final int[] widths = { 70, 200, 100, 70, 300 };
-      viewer = new SortableTreeViewer(parent, names, widths, 0, SWT.DOWN, SortableTreeViewer.DEFAULT_STYLE);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SortableTreeViewer.DEFAULT_STYLE);
       BusinessServiceCheckFilter filter = new BusinessServiceCheckFilter();
       setViewerAndFilter(viewer, filter);
       labelProvider = new BusinessServiceCheckLabelProvider();
       //TODO: comparator
       viewer.setLabelProvider(labelProvider);
       viewer.setContentProvider(new ArrayContentProvider());
-      viewer.getTree().setHeaderVisible(true);
-      viewer.getTree().setLinesVisible(true);
-      WidgetHelper.restoreColumnSettings(viewer.getTree(), ID);
-      viewer.getTree().addDisposeListener(new DisposeListener() {
+      WidgetHelper.restoreColumnSettings(viewer.getTable(), ID);
+      viewer.getTable().addDisposeListener(new DisposeListener() {
          @Override
          public void widgetDisposed(DisposeEvent e)
          {
-            WidgetHelper.saveColumnSettings(viewer.getTree(), ID);
+            WidgetHelper.saveColumnSettings(viewer.getTable(), ID);
          }
       });
       createActions();
