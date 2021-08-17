@@ -454,6 +454,12 @@ public class NXCPCodes
    public static final int CMD_2FA_GET_USER_BINDING_INFO = 0x01B5;
    public static final int CMD_2FA_MODIFY_USER_BINDING = 0x01B6;
    public static final int CMD_2FA_DELETE_USER_BINDING = 0x01B7;
+   public static final int CMD_WEB_SERVICE_CUSTOM_REQUEST = 0x01B8;
+   public static final int CMD_MERGE_FILES = 0x01B9;
+   public static final int CMD_FILEMGR_MERGE_FILES = 0x01BA;
+   public static final int CMD_BUSINESS_SERVICE_GET_CHECK_LIST = 0x01BB;
+   public static final int CMD_BUSINESS_SERVICE_UPDATE_CHECK = 0x01BC;
+   public static final int CMD_BUSINESS_SERVICE_DELETE_CHECK = 0x01BD;
 
 	// CMD_RS_ - Reporting Server related codes
 	public static final int CMD_RS_LIST_REPORTS = 0x1100;
@@ -1223,6 +1229,18 @@ public class NXCPCodes
    public static final long VID_HASH_CRC32 = 759;
    public static final long VID_HASH_MD5 = 760;
    public static final long VID_HASH_SHA256 = 761;
+   public static final long VID_HTTP_REQUEST_TYPE = 762;
+   public static final long VID_WEB_SWC_RESPONSE_CODE = 763;
+   public static final long VID_WEB_SWC_RESPONSE = 764;
+   public static final long VID_WEB_SWC_ERROR_TEXT = 765;
+   public static final long VID_REQUEST_DATA = 766;
+   public static final long VID_ENABLE_FILE_UPLOAD_RESUMING = 767;
+   public static final long VID_SLMCHECKS_COUNT = 768;
+   public static final long VID_SLMCHECK_ID  = 769;
+   public static final long VID_SLMCHECK_RELATED_OBJECT = 770;
+   public static final long VID_SLMCHECK_RELATED_DCI = 771;
+   public static final long VID_SLMCHECK_CURRENT_TICKET = 772;
+   public static final long VID_THRESHOLD = 773;
 
 	public static final long VID_ACL_USER_BASE = 0x00001000L;
 	public static final long VID_ACL_USER_LAST = 0x00001FFFL;
@@ -1334,4 +1352,5 @@ public class NXCPCodes
    public static final long VID_MASKED_FIELD_LIST_BASE = 0x10000000L;
    public static final long VID_SSH_KEY_LIST_BASE = 0x10000000L;
    public static final long VID_2FA_METHOD_LIST_BASE = 0x10000000L;
+   public static final long VID_SLM_CHECKS_LIST_BASE = 0x10000000L;
 }

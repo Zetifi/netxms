@@ -23,7 +23,6 @@ import java.util.Map;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.graphics.Image;
 import org.netxms.client.objects.AbstractObject;
-import org.netxms.client.objects.ServiceCheck;
 import org.netxms.client.objects.UnknownObject;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
@@ -34,7 +33,6 @@ import org.netxms.nxmc.resources.SharedIcons;
 public class BaseObjectLabelProvider extends LabelProvider
 {
    private static Map<Integer, Image> images;
-   private static Image serviceCheckTemplate;
 
    static
    {
@@ -60,14 +58,12 @@ public class BaseObjectLabelProvider extends LabelProvider
       images.put(AbstractObject.OBJECT_RACK, ResourceManager.getImageDescriptor("icons/objects/rack.gif").createImage());
       images.put(AbstractObject.OBJECT_SENSOR, ResourceManager.getImageDescriptor("icons/objects/sensor.gif").createImage());
       images.put(AbstractObject.OBJECT_SERVICEROOT, ResourceManager.getImageDescriptor("icons/objects/service_root.png").createImage());
-      images.put(AbstractObject.OBJECT_SLMCHECK, ResourceManager.getImageDescriptor("icons/objects/service_check.gif").createImage());
       images.put(AbstractObject.OBJECT_SUBNET, ResourceManager.getImageDescriptor("icons/objects/subnet.png").createImage());
       images.put(AbstractObject.OBJECT_TEMPLATE, ResourceManager.getImageDescriptor("icons/objects/template.png").createImage());
       images.put(AbstractObject.OBJECT_TEMPLATEGROUP, ResourceManager.getImageDescriptor("icons/objects/template_group.png").createImage());
       images.put(AbstractObject.OBJECT_TEMPLATEROOT, ResourceManager.getImageDescriptor("icons/objects/template_root.png").createImage());
       images.put(AbstractObject.OBJECT_VPNCONNECTOR, ResourceManager.getImageDescriptor("icons/objects/vpn.png").createImage());
       images.put(AbstractObject.OBJECT_ZONE, ResourceManager.getImageDescriptor("icons/objects/zone.gif").createImage());
-      serviceCheckTemplate = ResourceManager.getImageDescriptor("icons/objects/service_check_template.gif").createImage();
    }
 
    /**
@@ -78,9 +74,6 @@ public class BaseObjectLabelProvider extends LabelProvider
    {
       if (element instanceof UnknownObject)
          return SharedIcons.IMG_UNKNOWN_OBJECT;
-      
-      if ((element instanceof ServiceCheck) && ((ServiceCheck)element).isTemplate())
-         return serviceCheckTemplate;
       
       Image image = images.get(((AbstractObject)element).getObjectClass());
       return (image != null) ? image : SharedIcons.IMG_UNKNOWN_OBJECT;

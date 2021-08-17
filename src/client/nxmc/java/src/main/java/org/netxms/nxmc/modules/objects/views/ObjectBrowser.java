@@ -123,8 +123,6 @@ public class ObjectBrowser extends NavigationView
          case BUSINESS_SERVICES:
             classFilter.add(AbstractObject.OBJECT_BUSINESSSERVICE);
             classFilter.add(AbstractObject.OBJECT_BUSINESSSERVICEROOT);
-            classFilter.add(AbstractObject.OBJECT_NODELINK);
-            classFilter.add(AbstractObject.OBJECT_SLMCHECK);
             break;
       }
       return classFilter;

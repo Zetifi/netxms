@@ -26,6 +26,8 @@ import org.netxms.client.NXCSession;
  */
 public class BusinessService extends ServiceContainer
 {
+   //TODO: add instance fields
+   
 	/**
 	 * @param msg
 	 * @param session

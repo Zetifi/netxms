@@ -69,6 +69,7 @@ import org.netxms.base.NXCPMsgWaitQueue;
 import org.netxms.base.VersionInfo;
 import org.netxms.client.agent.config.AgentConfiguration;
 import org.netxms.client.agent.config.AgentConfigurationHandle;
+import org.netxms.client.businessservices.ServiceCheck;
 import org.netxms.client.constants.AggregationFunction;
 import org.netxms.client.constants.AuthenticationType;
 import org.netxms.client.constants.DataOrigin;
@@ -81,7 +82,6 @@ import org.netxms.client.dashboards.DashboardElement;
 import org.netxms.client.datacollection.ConditionDciInfo;
 import org.netxms.client.datacollection.DCOStatusHolder;
 import org.netxms.client.datacollection.DataCollectionConfiguration;
-import org.netxms.client.datacollection.RemoteChangeListener;
 import org.netxms.client.datacollection.DataCollectionItem;
 import org.netxms.client.datacollection.DataCollectionObject;
 import org.netxms.client.datacollection.DataCollectionTable;
@@ -93,10 +93,11 @@ import org.netxms.client.datacollection.DciSummaryTable;
 import org.netxms.client.datacollection.DciSummaryTableColumn;
 import org.netxms.client.datacollection.DciSummaryTableDescriptor;
 import org.netxms.client.datacollection.DciValue;
-import org.netxms.client.datacollection.GraphFolder;
 import org.netxms.client.datacollection.GraphDefinition;
+import org.netxms.client.datacollection.GraphFolder;
 import org.netxms.client.datacollection.PerfTabDci;
 import org.netxms.client.datacollection.PredictionEngine;
+import org.netxms.client.datacollection.RemoteChangeListener;
 import org.netxms.client.datacollection.SimpleDciValue;
 import org.netxms.client.datacollection.Threshold;
 import org.netxms.client.datacollection.ThresholdStateChange;
@@ -148,11 +149,9 @@ import org.netxms.client.objects.NetworkMapGroup;
 import org.netxms.client.objects.NetworkMapRoot;
 import org.netxms.client.objects.NetworkService;
 import org.netxms.client.objects.Node;
-import org.netxms.client.objects.NodeLink;
 import org.netxms.client.objects.ObjectCategory;
 import org.netxms.client.objects.Rack;
 import org.netxms.client.objects.Sensor;
-import org.netxms.client.objects.ServiceCheck;
 import org.netxms.client.objects.ServiceRoot;
 import org.netxms.client.objects.Subnet;
 import org.netxms.client.objects.Template;
@@ -1440,9 +1439,11 @@ public class NXCSession
             break;
          case AbstractObject.OBJECT_BUSINESSSERVICE:
             object = new BusinessService(msg, this);
+            System.out.println("#### Service Came: " + object.getObjectName());
             break;
          case AbstractObject.OBJECT_BUSINESSSERVICEROOT:
             object = new BusinessServiceRoot(msg, this);
+            System.out.println("#### root Service Came: " + object.getObjectName());
             break;
          case AbstractObject.OBJECT_CHASSIS:
             object = new Chassis(msg, this);
@@ -1489,9 +1490,6 @@ public class NXCSession
          case AbstractObject.OBJECT_NODE:
             object = new Node(msg, this);
             break;
-         case AbstractObject.OBJECT_NODELINK:
-            object = new NodeLink(msg, this);
-            break;
          case AbstractObject.OBJECT_RACK:
             object = new Rack(msg, this);
             break;
@@ -1500,9 +1498,6 @@ public class NXCSession
             break;
          case AbstractObject.OBJECT_SERVICEROOT:
             object = new ServiceRoot(msg, this);
-            break;
-         case AbstractObject.OBJECT_SLMCHECK:
-            object = new ServiceCheck(msg, this);
             break;
          case AbstractObject.OBJECT_SUBNET:
             object = new Subnet(msg, this);
@@ -5712,14 +5707,8 @@ public class NXCSession
             msg.setField(NXCPCodes.VID_SERVICE_RESPONSE, data.getResponse());
             msg.setFieldInt16(NXCPCodes.VID_CREATE_STATUS_DCI, data.isCreateStatusDci() ? 1 : 0);
             break;
-         case AbstractObject.OBJECT_NODELINK:
-            msg.setFieldInt32(NXCPCodes.VID_NODE_ID, (int)data.getLinkedNodeId());
-            break;
          case AbstractObject.OBJECT_RACK:
             msg.setFieldInt16(NXCPCodes.VID_HEIGHT, data.getHeight());
-            break;
-         case AbstractObject.OBJECT_SLMCHECK:
-            msg.setFieldInt16(NXCPCodes.VID_IS_TEMPLATE, data.isTemplate() ? 1 : 0);
             break;
          case AbstractObject.OBJECT_SENSOR:
             msg.setFieldInt32(NXCPCodes.VID_SENSOR_FLAGS, data.getFlags());
@@ -12669,5 +12658,28 @@ public class NXCSession
       msg.setField(NXCPCodes.VID_NAME, name);
       sendMessage(msg);
       waitForRCC(msg.getMessageId());
+   }
+
+   /**
+    * Get list business service checks
+    * 
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    * @return list of business service checks
+    */
+   public List<ServiceCheck> getBusinessServiceChecks(long serviceId) throws NXCException, IOException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_GET_CHECK_LIST);
+      sendMessage(msg);
+      final NXCPMessage response = waitForRCC(msg.getMessageId());
+      List<ServiceCheck> checks = new ArrayList<ServiceCheck>();
+      int count = response.getFieldAsInt32(NXCPCodes.VID_SLMCHECKS_COUNT);
+      long base = NXCPCodes.VID_SLM_CHECKS_LIST_BASE;      
+      for (int i= 0; i < count; i ++)
+      {
+         checks.add(new ServiceCheck(msg, base));
+         base +=10;
+      }
+      return checks;
    }
 }

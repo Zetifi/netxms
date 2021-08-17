@@ -4430,28 +4430,11 @@ class NXCORE_EXPORTABLE BaseBusinessService : public AbstractContainer
 {
 protected:
    ObjectArray<SlmCheck> m_checks;
-   uint32_t m_id;
-
-   bool loadChecksFromDatabase(DB_HANDLE hdb);
-   BaseBusinessService(uint32_t id);
-
-public:
-   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; } //TODO: DO we need another class for Prototypes?
-   ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
-   void addCheck(SlmCheck* check) { m_checks.add(check); }
-   void deleteCheck(uint32_t checkId);
-
-   static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);
-};
-
-/**
- * Business service object
- */
-class NXCORE_EXPORTABLE BusinessService : public BaseBusinessService
-{
-protected:
-   uint32_t m_prototypeId;
-   TCHAR m_instance[1024];
+   bool isPrototype;
+   uint32_t prototypeId;
+   TCHAR instance[1024];
+   uint32_t instanceMethod;
+   TCHAR instanceData[1024];
 
    /*bool m_busy;
    bool m_pollingDisabled;

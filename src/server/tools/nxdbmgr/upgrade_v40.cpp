@@ -71,8 +71,8 @@ static bool H_UpgradeFromV67()
 {
    //Business service
    static const TCHAR *businessServiceBatch =
-      _T("ALTER TABLE business_services ADD is_protopype char(1)\n")
-      _T("ALTER TABLE business_services ADD protopype_id integer\n")
+      _T("ALTER TABLE business_services ADD is_prototype char(1)\n")
+      _T("ALTER TABLE business_services ADD prototype_id integer\n")
       _T("ALTER TABLE business_services ADD instance varchar(1023)\n")
       _T("ALTER TABLE business_services ADD instance_method integer\n")
       _T("ALTER TABLE business_services ADD instance_data varchar(1023)\n")
@@ -258,6 +258,8 @@ static bool H_UpgradeFromV67()
    }
 
    CHK_EXEC(SQLQuery(_T("DROP TABLE node_links")));
+   //Update node links type that were converted to business services
+   CHK_EXEC(SQLQuery(_T("UPDATE object_containers SET object_class=28 where object_class=29")));
 
    //Update auto apply table
    static const TCHAR *autoBindBatch =

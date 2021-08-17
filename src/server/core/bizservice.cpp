@@ -36,7 +36,42 @@
  */
 BaseBusinessService::BaseBusinessService(uint32_t id) : m_checks(10, 10, Ownership::True)
 {
-   m_id = id;
+	if (!super::loadFromDatabase(hdb, id))
+		return false;
+
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter ")
+													_T("FROM business_services WHERE service_id=?"));
+	if (hStmt == NULL)
+	{
+		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from business_services"));
+		return false;
+	}
+	DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_id);
+	DB_RESULT hResult = DBSelectPrepared(hStmt);
+	if (hResult == NULL)
+	{
+		DBFreeStatement(hStmt);
+		return false;
+	}
+
+	if (DBGetNumRows(hResult) == 0)
+	{
+		DBFreeResult(hResult);
+		DBFreeStatement(hStmt);
+		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot load business service object %ld - record missing"), (long)m_id);
+		return false;
+	}
+
+   isPrototype = (bool)DBGetFieldULong(hResult, 0, 0);
+   prototypeId = DBGetFieldULong(hResult, 0, 1);
+	DBGetField(hResult, 0, 2, instance, 1024);
+   uint32_t instanceMethod = DBGetFieldULong(hResult, 0, 3);
+	DBGetField(hResult, 0, 4, instanceData, 1024);
+
+	DBFreeResult(hResult);
+	DBFreeStatement(hStmt);
+
+	return true;
 }
 
 /**
@@ -366,28 +401,4 @@ uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
    service->deleteCheck(checkId);
 
    return RCC_SUCCESS;
-}
-
-
-/* ************************************
- *
- * Business Service Prototype
- *
- * *************************************
-*/
-
-/**
- * Service prototype constructor
- */
-BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData) : BaseBusinessService(id)
-{
-   m_instanceDiscoveryMethod = instanceDiscoveryMethod;
-   _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, sizeof(m_instanceDiscoveryData));
-}
-
-/**
- * Destructor
- */
-BusinessServicePrototype::~BusinessServicePrototype()
-{
 }
