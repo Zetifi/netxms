@@ -345,14 +345,9 @@ void GetCheckList(uint32_t serviceId, NXCPMessage *response)
    }
 
    int counter = 0;
-   for ( auto check : *service->getChecks())
+   for (auto check : *service->getChecks())
    {
-      response->setField(VID_SLM_CHECKS_LIST_BASE + (counter * 10), check->getId());
-      response->setField(VID_SLM_CHECKS_LIST_BASE + (counter * 10) + 1, check->getType());
-      response->setField(VID_SLM_CHECKS_LIST_BASE + (counter * 10) + 2, check->getReason());
-      response->setField(VID_SLM_CHECKS_LIST_BASE + (counter * 10) + 3, check->getRelatedDCI());
-      response->setField(VID_SLM_CHECKS_LIST_BASE + (counter * 10) + 4, check->getRelatedObject());
-      response->setField(VID_SLM_CHECKS_LIST_BASE + (counter * 10) + 5, check->getCurrentTicket());
+      check->fillMessage(response, VID_SLM_CHECKS_LIST_BASE + (counter * 10));
       counter++;
    }
    response->setField(VID_SLMCHECKS_COUNT, counter);

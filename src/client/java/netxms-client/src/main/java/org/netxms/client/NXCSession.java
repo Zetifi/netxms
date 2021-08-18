@@ -12676,7 +12676,7 @@ public class NXCSession
       long base = NXCPCodes.VID_SLM_CHECKS_LIST_BASE;      
       for (int i= 0; i < count; i ++)
       {
-         checks.add(new ServiceCheck(msg, base));
+         checks.add(new ServiceCheck(response, base));
          base +=10;
       }
       return checks;

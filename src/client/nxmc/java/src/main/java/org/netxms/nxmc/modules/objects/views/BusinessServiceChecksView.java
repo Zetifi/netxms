@@ -25,6 +25,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -97,7 +98,7 @@ public class BusinessServiceChecksView extends ObjectView
       BusinessServiceCheckFilter filter = new BusinessServiceCheckFilter();
       setViewerAndFilter(viewer, filter);
       labelProvider = new BusinessServiceCheckLabelProvider();
-      //TODO: comparator
+      viewer.setComparator(new ViewerComparator());
       viewer.setLabelProvider(labelProvider);
       viewer.setContentProvider(new ArrayContentProvider());
       WidgetHelper.restoreColumnSettings(viewer.getTable(), ID);

@@ -81,15 +81,14 @@ void SlmCheck::loadFromSelect(DB_RESULT hResult, int row)
 {
 	m_id = DBGetFieldULong(hResult, row, 0);
 	m_type = DBGetFieldULong(hResult, row, 1);
-	m_relatedObject = DBGetFieldULong(hResult, row, 2);
-	m_relatedDCI = DBGetFieldULong(hResult, row, 3);
-	m_currentTicket = DBGetFieldULong(hResult, row, 4);
+   DBGetField(hResult, row, 2, m_name, 1023);
+	m_relatedObject = DBGetFieldULong(hResult, row, 3);
+	m_relatedDCI = DBGetFieldULong(hResult, row, 4);
+   m_statusThreshold = DBGetFieldULong(hResult, row, 5);
+	m_currentTicket = DBGetFieldULong(hResult, row, 6);
 	MemFree(m_script);
-	m_script = DBGetField(hResult, row, 5, nullptr, 0);
+	m_script = DBGetField(hResult, row, 7, nullptr, 0);
 	compileScript();
-
-	// Load access list
-	//loadACLFromDB(hdb); FIXME: check this
 }
 
 /**
@@ -113,6 +112,19 @@ void SlmCheck::compileScript()
    {
       nxlog_write(NXLOG_WARNING, _T("Failed to compile script for service check object %s [%u] (%s)"), _T("Default Name"), m_id, errorMsg);
    }
+}
+
+
+void SlmCheck::fillMessage(NXCPMessage *msg, uint64_t baseId)
+{
+   msg->setField(baseId, m_id);
+   msg->setField(baseId + 1, m_type);
+   msg->setField(baseId + 2, m_reason);
+   msg->setField(baseId + 3, m_relatedDCI);
+   msg->setField(baseId + 4, m_relatedObject);
+   msg->setField(baseId + 5, m_statusThreshold);
+   msg->setField(baseId + 6, m_name);
+   msg->setField(baseId + 7, m_script);
 }
 
 /**

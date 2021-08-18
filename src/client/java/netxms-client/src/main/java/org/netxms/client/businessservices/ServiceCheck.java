@@ -80,9 +80,9 @@ public class ServiceCheck
 	   id = msg.getFieldAsInt64(base);
 		checkType = msg.getFieldAsInt32(base + 1);
       failureReason = msg.getFieldAsString(base + 2);
-      objectId = msg.getFieldAsInt64(base + 3);
-      dciId = msg.getFieldAsInt64(base + 4);
-      threshold = msg.getFieldAsInt32(base + 5); //current ticner not required 
+      dciId = msg.getFieldAsInt64(base + 3);
+      objectId = msg.getFieldAsInt64(base + 4);
+      threshold = msg.getFieldAsInt32(base + 5); 
 		description = msg.getFieldAsString(base + 6); 
 		script = msg.getFieldAsString(base + 7); 
 		if (failureReason != null && !failureReason.isEmpty())

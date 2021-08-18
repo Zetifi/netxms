@@ -4373,10 +4373,11 @@ protected:
    NXSL_VM *m_pCompiledScript;
    TCHAR m_reason[256];
    uint32_t m_id;
-   TCHAR m_name[MAX_OBJECT_NAME];
+   TCHAR m_name[1023];
    uint32_t m_relatedObject;
    uint32_t m_relatedDCI;
    uint32_t m_currentTicket;
+   int m_statusThreshold;
 
    bool insertTicket();
    void closeTicket();
@@ -4401,6 +4402,7 @@ public:
 
    void modifyFromMessage(NXCPMessage *pRequest);
    void loadFromSelect(DB_RESULT hResult, int row);
+   void fillMessage(NXCPMessage *msg, uint64_t baseId);
 
    //const TCHAR *getReason() { return m_reason; }
 };
