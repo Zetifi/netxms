@@ -117,7 +117,7 @@ public class ServiceCheck
 	 */
 	public String getScript()
 	{
-		return script;
+		return script == null ? "" : script;
 	}
 
 	/**
@@ -149,7 +149,7 @@ public class ServiceCheck
     */
    public String getDescription()
    {
-      return description;
+      return description == null ? "" : description;
    }
 
    /**

@@ -61,15 +61,34 @@ public class BusinessServiceCheckLabelProvider extends LabelProvider implements 
          case BusinessServiceChecksView.COLUMN_DESCRIPTION:    
             return check.getDescription();
          case BusinessServiceChecksView.COLUMN_TYPE:  
-            return TYPES[check.getCheckType()];  
+            return getTypeName(check);  
          case BusinessServiceChecksView.COLUMN_STATUS:    
-            return check.isViolated() ? i18n.tr("Violated") : i18n.tr("Normal");  
+            return getViolationStatus(check);  
          case BusinessServiceChecksView.COLUMN_FAIL_REASON:    
             return check.getFailureReason();
 		}
 		return null;
 	}
-
+	
+	/**
+	 * Get violation status string
+	 * 
+	 * @return violation status text
+	 */
+	public String getViolationStatus(ServiceCheck check)
+	{
+	   return check.isViolated() ? i18n.tr("Violated") : i18n.tr("Normal");
+	}
+   
+   /**
+    * Check type text name
+    * @param check check object
+    * @return cehck type name
+    */
+   public String getTypeName(ServiceCheck check)
+   {
+      return TYPES[check.getCheckType()];
+   }
 
    /**
     * @see org.eclipse.jface.viewers.ITableColorProvider#getForeground(java.lang.Object, int)

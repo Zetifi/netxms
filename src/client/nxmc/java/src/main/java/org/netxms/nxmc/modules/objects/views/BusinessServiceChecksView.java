@@ -19,19 +19,26 @@
 package org.netxms.nxmc.modules.objects.views;
 
 import java.util.List;
+import java.util.Map;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ViewerComparator;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
+import org.netxms.client.ServerAction;
+import org.netxms.client.SessionListener;
+import org.netxms.client.SessionNotification;
 import org.netxms.client.businessservices.ServiceCheck;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.BusinessService;
@@ -40,9 +47,14 @@ import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.SortableTreeViewer;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.netxms.nxmc.modules.actions.views.ActionManager;
+import org.netxms.nxmc.modules.objects.dialogs.EditBSCheckDlg;
 import org.netxms.nxmc.modules.objects.views.helpers.BusinessServiceCheckFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.BusinessServiceCheckLabelProvider;
+import org.netxms.nxmc.modules.objects.views.helpers.BusinessServiceComparator;
 import org.netxms.nxmc.resources.ResourceManager;
+import org.netxms.nxmc.resources.SharedIcons;
+import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
@@ -61,12 +73,13 @@ public class BusinessServiceChecksView extends ObjectView
    public static final int COLUMN_FAIL_REASON = 4;
 
    private NXCSession session;
+   private SessionListener sessionListener;
    private SortableTableViewer viewer;
    private BusinessServiceCheckLabelProvider labelProvider;
    private Action actionEdit;
    private Action actionCreate;
    private Action actionDelete;
-   private List<ServiceCheck> checksList;
+   private Map<Long, ServiceCheck> checksList;
    
    /**
     * @param name
@@ -95,12 +108,22 @@ public class BusinessServiceChecksView extends ObjectView
          };
       final int[] widths = { 70, 200, 100, 70, 300 };
       viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SortableTreeViewer.DEFAULT_STYLE);
-      BusinessServiceCheckFilter filter = new BusinessServiceCheckFilter();
-      setViewerAndFilter(viewer, filter);
       labelProvider = new BusinessServiceCheckLabelProvider();
-      viewer.setComparator(new ViewerComparator());
+      BusinessServiceCheckFilter filter = new BusinessServiceCheckFilter(labelProvider);
+      setViewerAndFilter(viewer, filter);
+      viewer.setComparator(new BusinessServiceComparator(labelProvider));
       viewer.setLabelProvider(labelProvider);
       viewer.setContentProvider(new ArrayContentProvider());
+      viewer.addSelectionChangedListener(new ISelectionChangedListener() {         
+         @Override
+         public void selectionChanged(SelectionChangedEvent event)
+         {
+            IStructuredSelection selection = (IStructuredSelection)event.getSelection();
+            actionEdit.setEnabled(selection.size() == 1);
+            actionDelete.setEnabled(selection.size() > 0);
+         }
+      });
+      
       WidgetHelper.restoreColumnSettings(viewer.getTable(), ID);
       viewer.getTable().addDisposeListener(new DisposeListener() {
          @Override
@@ -111,6 +134,66 @@ public class BusinessServiceChecksView extends ObjectView
       });
       createActions();
       createPopupMenu();
+
+      sessionListener = new SessionListener() {
+         @Override
+         public void notificationHandler(SessionNotification n)
+         {
+            switch(n.getCode())
+            {
+               case SessionNotification.BUSINESS_SERVICE_CHECK_MODIFY:
+                  viewer.getControl().getDisplay().asyncExec(new Runnable() {
+                     @Override
+                     public void run()
+                     {
+                        checksList.put(n.getSubCode(), (ServiceCheck)n.getObject());
+                        viewer.setInput(checksList.values());
+                     }
+                  });
+                  break;
+               case SessionNotification.BUSINESS_SERVICE_CHECK_DELETE:
+                  viewer.getControl().getDisplay().asyncExec(new Runnable() {
+                     @Override
+                     public void run()
+                     {
+                        checksList.remove(n.getSubCode());
+                        viewer.setInput(checksList.values());
+                     }
+                  });
+                  break;
+            }
+         }
+      };
+      session.addListener(sessionListener);
+   }
+
+   /**
+    * @see org.netxms.nxmc.base.views.View#refresh()
+    */
+   @Override
+   public void refresh()
+   {
+      new Job(i18n.tr("Get node components"), this) {
+         @Override
+         protected void run(IProgressMonitor monitor) throws Exception
+         {
+            checksList = session.getBusinessServiceChecks(getObject().getObjectId());
+            
+            runInUIThread(new Runnable() {               
+               @Override
+               public void run()
+               {
+                  viewer.setInput(checksList.values());
+               }
+            });
+         }
+
+         @Override
+         protected String getErrorMessage()
+         {
+            return i18n.tr("Cannot get component information for node {0}", getObject().getObjectName());
+         }
+      }.start();
    }
 
    /**
@@ -140,7 +223,9 @@ public class BusinessServiceChecksView extends ObjectView
     */
    protected void fillContextMenu(IMenuManager manager)
    {
-      //TODO:
+      manager.add(actionEdit);
+      manager.add(actionCreate);
+      manager.add(actionDelete);
    }
 
    /**
@@ -148,9 +233,109 @@ public class BusinessServiceChecksView extends ObjectView
     */
    private void createActions()
    {
-      //TODO:
+      actionCreate = new Action(i18n.tr("&Create new"), SharedIcons.ADD_OBJECT) 
+      {
+         @Override
+         public void run()
+         {
+            createCheck();
+         }
+      };
+      actionEdit = new Action(i18n.tr("&Edit..."), SharedIcons.EDIT) 
+      {
+         @Override
+         public void run()
+         {
+            editCheck();
+         }
+      };
+      actionDelete = new Action(i18n.tr("&Delete"), SharedIcons.DELETE_OBJECT) 
+      {
+         @Override
+         public void run()
+         {
+            deleteCheck();
+         }
+      };
    }
 
+   protected void deleteCheck()
+   {
+      IStructuredSelection selection = (IStructuredSelection)viewer.getSelection();
+      if (selection.isEmpty())
+         return;
+
+      if (!MessageDialogHelper.openConfirm(getWindow().getShell(), i18n.tr("Confirm Delete"),
+            i18n.tr("Do you really want to delete selected check?")))
+         return;
+
+      final Object[] objects = selection.toArray();
+      new Job(i18n.tr("Delete actions"), this) {
+         @Override
+         protected void run(IProgressMonitor monitor) throws Exception
+         {
+            for(int i = 0; i < objects.length; i++)
+            {
+               session.deleteBusinessServiceCheck(getObject().getObjectId(), ((ServiceCheck)objects[i]).getId());
+            }
+         }
+
+         @Override
+         protected String getErrorMessage()
+         {
+            return i18n.tr("Cannot delete business service check");
+         }
+      }.start();      
+   }
+
+   protected void editCheck()
+   {
+      IStructuredSelection selection = (IStructuredSelection)viewer.getSelection();
+      if (selection.size() != 1)
+         return;
+
+      final ServiceCheck check = new ServiceCheck((ServiceCheck)selection.getFirstElement());
+      final EditBSCheckDlg dlg = new EditBSCheckDlg(getWindow().getShell(), check, false);
+      if (dlg.open() == Window.OK)
+      {
+         new Job(i18n.tr("Update action configuration"), this) {
+            @Override
+            protected void run(IProgressMonitor monitor) throws Exception
+            {
+               session.modifyBusinessServiceCheck(getObject().getObjectId(), check);
+            }
+
+            @Override
+            protected String getErrorMessage()
+            {
+               return i18n.tr("Cannot update action configuration");
+            }
+         }.start();
+      }
+   }
+
+   private void createCheck()
+   {
+      final ServiceCheck check = new ServiceCheck();
+      final EditBSCheckDlg dlg = new EditBSCheckDlg(getWindow().getShell(), check, false);
+      if (dlg.open() == Window.OK)
+      {
+         new Job(i18n.tr("Update action configuration"), this) {
+            @Override
+            protected void run(IProgressMonitor monitor) throws Exception
+            {
+               session.modifyBusinessServiceCheck(getObject().getObjectId(), check);
+            }
+
+            @Override
+            protected String getErrorMessage()
+            {
+               return i18n.tr("Cannot update action configuration");
+            }
+         }.start();
+      }
+   }
+   
    /**
     * @see org.netxms.nxmc.modules.objects.views.ObjectView#onObjectChange(org.netxms.client.objects.AbstractObject)
     */
@@ -161,7 +346,6 @@ public class BusinessServiceChecksView extends ObjectView
       if (object == null)
          return;
 
-      final NXCSession session = Registry.getSession();
       Job job = new Job(i18n.tr("Get node components"), this) {
          @Override
          protected void run(IProgressMonitor monitor) throws Exception
@@ -172,7 +356,7 @@ public class BusinessServiceChecksView extends ObjectView
                @Override
                public void run()
                {
-                  viewer.setInput(checksList);
+                  viewer.setInput(checksList.values());
                }
             });
          }
@@ -207,5 +391,15 @@ public class BusinessServiceChecksView extends ObjectView
    public int getPriority()
    {
       return 60;
+   }
+
+   /**
+    * @see org.netxms.nxmc.base.views.View#dispose()
+    */
+   @Override
+   public void dispose()
+   {
+      session.removeListener(sessionListener);
+      super.dispose();
    }
 }

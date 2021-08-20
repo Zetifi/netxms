@@ -682,6 +682,14 @@ public class NXCSession
                      userSystemRights = msg.getFieldAsInt64(NXCPCodes.VID_USER_SYS_RIGHTS);
                      sendNotification(new SessionNotification(SessionNotification.SYSTEM_ACCESS_CHANGED, userSystemRights));
                      break;
+                  case NXCPCodes.CMD_BUSINESS_SERVICE_UPDATE_CHECK:
+                     sendNotification(new SessionNotification(SessionNotification.BUSINESS_SERVICE_CHECK_MODIFY,
+                           msg.getFieldAsInt64(NXCPCodes.VID_SLM_CHECKS_LIST_BASE), new ServiceCheck(msg, NXCPCodes.VID_SLM_CHECKS_LIST_BASE)));
+                     break;
+                  case NXCPCodes.CMD_BUSINESS_SERVICE_DELETE_CHECK:
+                     sendNotification(new SessionNotification(SessionNotification.BUSINESS_SERVICE_CHECK_DELETE,
+                           msg.getFieldAsInt64(NXCPCodes.VID_SLMCHECK_ID)));
+                     break;
                   default:
                      // Check subscriptions
                      synchronized(messageSubscriptions)
@@ -12658,27 +12666,63 @@ public class NXCSession
       waitForRCC(msg.getMessageId());
    }
 
-   /**
+   /**    
     * Get list business service checks
     * 
+    * @param serviceId business service id 
     * @throws IOException if socket I/O error occurs
     * @throws NXCException if NetXMS server returns an error or operation was timed out
     * @return list of business service checks
     */
-   public List<ServiceCheck> getBusinessServiceChecks(long serviceId) throws NXCException, IOException
+   public Map<Long, ServiceCheck> getBusinessServiceChecks(long serviceId) throws NXCException, IOException
    {
       final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_GET_CHECK_LIST);
       msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)serviceId);
       sendMessage(msg);
       final NXCPMessage response = waitForRCC(msg.getMessageId());
-      List<ServiceCheck> checks = new ArrayList<ServiceCheck>();
+      Map<Long, ServiceCheck> checks = new HashMap<Long, ServiceCheck>();
       int count = response.getFieldAsInt32(NXCPCodes.VID_SLMCHECKS_COUNT);
       long base = NXCPCodes.VID_SLM_CHECKS_LIST_BASE;      
       for (int i= 0; i < count; i ++)
       {
-         checks.add(new ServiceCheck(response, base));
+         ServiceCheck check = new ServiceCheck(response, base);
+         checks.put(check.getId(), check);
          base +=10;
       }
       return checks;
    }
+   
+   /**  
+    * Delete check form businsess service
+    * 
+    * @param businessServiceid business service id 
+    * @param checkId cehck id
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public void deleteBusinessServiceCheck(long businessServiceid, long checkId) throws NXCException, IOException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_GET_CHECK_LIST);
+      msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)businessServiceid);
+      msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_ID, (int)checkId);
+      sendMessage(msg);
+      waitForRCC(msg.getMessageId());
+   }
+   
+   /**  
+    * Modify check form businsess service
+    * 
+    * @param businessServiceid business service id 
+    * @param checkId cehck id
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public void modifyBusinessServiceCheck(long businessServiceid, ServiceCheck check) throws NXCException, IOException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_GET_CHECK_LIST);
+      msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)businessServiceid);
+      check.fillMessage(msg);
+      sendMessage(msg);
+      waitForRCC(msg.getMessageId());
+   }   
 }
