@@ -85,9 +85,9 @@ void SlmCheck::loadFromSelect(DB_RESULT hResult, int row)
 	m_relatedObject = DBGetFieldULong(hResult, row, 3);
 	m_relatedDCI = DBGetFieldULong(hResult, row, 4);
    m_statusThreshold = DBGetFieldULong(hResult, row, 5);
-	m_currentTicket = DBGetFieldULong(hResult, row, 6);
 	MemFree(m_script);
-	m_script = DBGetField(hResult, row, 7, nullptr, 0);
+	m_script = DBGetField(hResult, row, 6, nullptr, 0);
+	m_currentTicket = DBGetFieldULong(hResult, row, 7);
 	compileScript();
 }
 

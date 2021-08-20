@@ -5759,7 +5759,7 @@ void ClientSession::createObject(NXCPMessage *request)
                   switch(objectClass)
                   {
                      case OBJECT_BUSINESS_SERVICE:
-                        object = make_shared<BusinessService>(objectName);
+                        object = make_shared<BusinessService>(0, 0, nullptr);
                         NetObjInsert(object, true, false);
                         break;
                      case OBJECT_CHASSIS:

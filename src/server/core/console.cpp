@@ -534,7 +534,7 @@ int ProcessConsoleCommand(const TCHAR *pszCmdLine, CONSOLE_CTX pCtx)
             if (id != 0)
             {
                shared_ptr<NetObj> object = FindObjectById(id);
-               if ((object != nullptr) && object->isDataCollectionTarget())
+               if ((object != nullptr) && (object->isDataCollectionTarget() || object->isPollable()))
                {
                   switch(pollType)
                   {

@@ -2015,22 +2015,18 @@ BOOL LoadObjects()
 	   for (int i = 0; i < count; i++)
 	   {
 		   uint32_t id = DBGetFieldULong(hResult, i, 0);
-         auto service = BusinessService::createBusinessService(hdb, id);
-		   auto service = make_shared<BusinessService>();
-		   if (service->loadFromDatabase(hdb, id))
+         auto service = shared_ptr<BaseBusinessService>(BusinessService::createBusinessService(hdb, id));
+		   if (service != nullptr)
 		   {
-            service->loadChecksFromDatabase(hdb);
 			   NetObjInsert(service, false, false);  // Insert into indexes
 		   }
 		   else     // Object load failed
 		   {
-			   service->destroy();
 			   nxlog_write(NXLOG_ERROR, _T("Failed to load business service object with ID %u from database"), id);
 		   }
 	   }
 	   DBFreeResult(hResult);
    }
-
    g_idxObjectById.setStartupMode(false);
    //g_idxServiceCheckById.setStartupMode(false);
 

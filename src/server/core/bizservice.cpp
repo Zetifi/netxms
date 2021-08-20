@@ -105,37 +105,12 @@ bool BaseBusinessService::loadChecksFromDatabase(DB_HANDLE hdb)
       m_checks.add(check);
    }
 
+   DBFreeResult(hResult);
+   DBFreeStatement(hStmt);
 	return true;
 }
 
-/* ************************************
- *
- * Business Service class
- *
- * *************************************
-*/
-
-/**
- * Constructor for new service object
- */
-BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance) : BaseBusinessService(id)
-{
-	/*m_busy = false;
-   m_pollingDisabled = false;
-	m_lastPollTime = time_t(0);
-	m_lastPollStatus = STATUS_UNKNOWN;*/
-	_tcslcpy(m_name, name, MAX_OBJECT_NAME);
-}
-
-/**
- * Destructor
- */
-BusinessService::~BusinessService()
-{
-}
-
-
-void BusinessService::deleteCheck(uint32_t checkId)
+void BaseBusinessService::deleteCheck(uint32_t checkId)
 {
    for (auto it = m_checks.begin(); it.hasNext(); it++)
    {
@@ -150,7 +125,7 @@ void BusinessService::deleteCheck(uint32_t checkId)
 BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, uint32_t id)
 {
    BaseBusinessService* service = nullptr;
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT prototype_id,instance,instance_method,instance_data,instance_filter ")
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT protopype_id,instance,instance_method,instance_data,instance_filter ")
 													_T("FROM business_services WHERE service_id=?"));
 	if (hStmt == NULL)
 	{
@@ -206,6 +181,39 @@ BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, u
    }*/
    return service;
 }
+
+
+/* ************************************
+ *
+ * Business Service class
+ *
+ * *************************************
+*/
+
+/**
+ * Constructor for new service object
+ */
+BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance) : BaseBusinessService(id)
+{
+	/*m_busy = false;
+   m_pollingDisabled = false;
+	m_lastPollTime = time_t(0);
+	m_lastPollStatus = STATUS_UNKNOWN;*/
+	//_tcslcpy(m_name, name, MAX_OBJECT_NAME);
+   m_prototypeId = prototypeId;
+   _tcsncpy(m_instance, instance, sizeof(m_instance));
+}
+
+/**
+ * Destructor
+ */
+BusinessService::~BusinessService()
+{
+}
+
+
+
+
 
 
 /**
@@ -338,7 +346,7 @@ void BusinessService::poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *p
 
 void GetCheckList(uint32_t serviceId, NXCPMessage *response)
 {
-   shared_ptr<BusinessService> service = static_pointer_cast<BusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
+   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
    if (service == nullptr)
    {
       return;
@@ -357,7 +365,7 @@ void GetCheckList(uint32_t serviceId, NXCPMessage *response)
 uint32_t ModifyCheck(NXCPMessage *request)
 {
    uint32_t serviceId = request->getFieldAsUInt32(VID_OBJECT_ID);
-   shared_ptr<BusinessService> service = static_pointer_cast<BusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
+   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
    if (service == nullptr)
    {
       return RCC_INVALID_OBJECT_ID;
@@ -387,7 +395,7 @@ uint32_t ModifyCheck(NXCPMessage *request)
 
 uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
 {
-   shared_ptr<BusinessService> service = static_pointer_cast<BusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
+   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
    if (service == nullptr)
    {
       return RCC_INVALID_OBJECT_ID;
@@ -396,4 +404,33 @@ uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
    service->deleteCheck(checkId);
 
    return RCC_SUCCESS;
+}
+
+
+/* ************************************
+ *
+ * Business Service Prototype
+ *
+ * *************************************
+*/
+
+/**
+ * Service prototype constructor
+ */
+BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData) : BaseBusinessService(id)
+{
+   m_instanceDiscoveryMethod = instanceDiscoveryMethod;
+   _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, sizeof(m_instanceDiscoveryData));
+}
+
+/**
+ * Destructor
+ */
+BusinessServicePrototype::~BusinessServicePrototype()
+{
+}
+
+void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo*, ClientSession*, unsigned int)
+{
+
 }

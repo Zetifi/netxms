@@ -4432,11 +4432,28 @@ class NXCORE_EXPORTABLE BaseBusinessService : public AbstractContainer
 {
 protected:
    ObjectArray<SlmCheck> m_checks;
-   bool isPrototype;
-   uint32_t prototypeId;
-   TCHAR instance[1024];
-   uint32_t instanceMethod;
-   TCHAR instanceData[1024];
+
+   bool loadChecksFromDatabase(DB_HANDLE hdb);
+   
+
+public:
+   BaseBusinessService(uint32_t id);
+   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; } //TODO: DO we need another class for Prototypes?
+   ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
+   void addCheck(SlmCheck* check) { m_checks.add(check); }
+   void deleteCheck(uint32_t checkId);
+
+   static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);
+};
+
+/**
+ * Business service object
+ */
+class NXCORE_EXPORTABLE BusinessService : public BaseBusinessService
+{
+protected:
+   uint32_t m_prototypeId;
+   TCHAR m_instance[1024];
 
    /*bool m_busy;
    bool m_pollingDisabled;
@@ -4457,7 +4474,7 @@ public:
 
    
 
-   virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
+   //virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
    /*virtual bool saveToDatabase(DB_HANDLE hdb) override;
    virtual bool deleteFromDatabase(DB_HANDLE hdb) override;*/
 
@@ -4495,7 +4512,7 @@ public:
 
 
 
-   virtual bool loadFromDatabase(DB_HANDLE hdb) override;
+   //virtual bool loadFromDatabase(DB_HANDLE hdb);
    /*virtual bool saveToDatabase(DB_HANDLE hdb) override;
    virtual bool deleteFromDatabase(DB_HANDLE hdb) override;*/
 
