@@ -93,7 +93,7 @@ void BaseBusinessService::deleteCheck(uint32_t checkId)
 BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, uint32_t id)
 {
    BaseBusinessService* service = nullptr;
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT protopype_id,instance,instance_method,instance_data,instance_filter ")
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT prototype_id,instance,instance_method,instance_data,instance_filter ")
 													_T("FROM business_services WHERE service_id=?"));
 	if (hStmt == NULL)
 	{

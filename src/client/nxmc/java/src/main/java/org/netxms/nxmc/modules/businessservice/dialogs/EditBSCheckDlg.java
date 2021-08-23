@@ -1,4 +1,4 @@
-package org.netxms.nxmc.modules.objects.dialogs;
+package org.netxms.nxmc.modules.businessservice.dialogs;
 
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.swt.SWT;

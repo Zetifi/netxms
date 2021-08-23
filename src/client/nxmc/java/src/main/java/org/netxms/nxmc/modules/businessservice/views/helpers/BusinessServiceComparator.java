@@ -16,14 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-package org.netxms.nxmc.modules.objects.views.helpers;
+package org.netxms.nxmc.modules.businessservice.views.helpers;
 
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.netxms.client.businessservices.ServiceCheck;
 import org.netxms.nxmc.base.widgets.SortableTableViewer;
-import org.netxms.nxmc.modules.objects.views.BusinessServiceChecksView;
+import org.netxms.nxmc.modules.businessservice.views.BusinessServiceChecksView;
 
 /**
  * Comparator for 802.1x port state table

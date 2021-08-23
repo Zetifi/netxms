@@ -16,9 +16,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-package org.netxms.nxmc.modules.objects.views;
+package org.netxms.nxmc.modules.businessservice.views;
 
-import java.util.List;
 import java.util.Map;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
@@ -36,7 +35,6 @@ import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
-import org.netxms.client.ServerAction;
 import org.netxms.client.SessionListener;
 import org.netxms.client.SessionNotification;
 import org.netxms.client.businessservices.ServiceCheck;
@@ -47,11 +45,11 @@ import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.SortableTreeViewer;
 import org.netxms.nxmc.localization.LocalizationHelper;
-import org.netxms.nxmc.modules.actions.views.ActionManager;
-import org.netxms.nxmc.modules.objects.dialogs.EditBSCheckDlg;
-import org.netxms.nxmc.modules.objects.views.helpers.BusinessServiceCheckFilter;
-import org.netxms.nxmc.modules.objects.views.helpers.BusinessServiceCheckLabelProvider;
-import org.netxms.nxmc.modules.objects.views.helpers.BusinessServiceComparator;
+import org.netxms.nxmc.modules.businessservice.dialogs.EditBSCheckDlg;
+import org.netxms.nxmc.modules.businessservice.views.helpers.BusinessServiceCheckFilter;
+import org.netxms.nxmc.modules.businessservice.views.helpers.BusinessServiceCheckLabelProvider;
+import org.netxms.nxmc.modules.businessservice.views.helpers.BusinessServiceComparator;
+import org.netxms.nxmc.modules.objects.views.ObjectView;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;

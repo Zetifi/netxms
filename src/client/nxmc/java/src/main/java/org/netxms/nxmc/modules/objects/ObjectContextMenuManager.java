@@ -32,6 +32,8 @@ import org.eclipse.swt.widgets.Shell;
 import org.netxms.client.NXCObjectCreationData;
 import org.netxms.client.NXCSession;
 import org.netxms.client.objects.AbstractObject;
+import org.netxms.client.objects.BusinessService;
+import org.netxms.client.objects.BusinessServiceRoot;
 import org.netxms.client.objects.Container;
 import org.netxms.client.objects.Node;
 import org.netxms.client.objects.ServiceRoot;
@@ -40,6 +42,7 @@ import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.views.View;
 import org.netxms.nxmc.base.widgets.helpers.MenuContributionItem;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.netxms.nxmc.modules.businessservice.dialogs.CreateBusinessServicePrototype;
 import org.netxms.nxmc.modules.objects.dialogs.CreateChassisDialog;
 import org.netxms.nxmc.modules.objects.dialogs.CreateInterfaceDialog;
 import org.netxms.nxmc.modules.objects.dialogs.CreateMobileDeviceDialog;
@@ -64,6 +67,8 @@ public class ObjectContextMenuManager extends MenuManager
    private Action actionCreateNode;
    private Action actionCreateRack;
    private Action actionCreateVpnConnector;
+   private Action actionCreateBusinessService;
+   private Action actionCreateBusinessServicePrototype;
    private Action actionProperties;
 
    public ObjectContextMenuManager(View view, ISelectionProvider selectionProvider)
@@ -193,6 +198,40 @@ public class ObjectContextMenuManager extends MenuManager
 
       actionCreateRack = new GenericObjectCreationAction(i18n.tr("&Rack..."), AbstractObject.OBJECT_RACK, i18n.tr("Rack"));
       actionCreateVpnConnector = new GenericObjectCreationAction(i18n.tr("&VPN connector..."), AbstractObject.OBJECT_VPNCONNECTOR, i18n.tr("VPN Connector"));
+      
+
+      actionCreateBusinessService = new GenericObjectCreationAction(i18n.tr("&Business Service..."), AbstractObject.OBJECT_BUSINESSSERVICE, i18n.tr("Business Service"));
+
+      actionCreateBusinessServicePrototype = new Action(i18n.tr("Business Service &Prototype...")) {
+         @Override
+         public void run()
+         {
+            final long parentId = getObjectIdFromSelection();
+            if (parentId == 0)
+               return;
+
+            final CreateBusinessServicePrototype dlg = new CreateBusinessServicePrototype(getShell());
+            if (dlg.open() != Window.OK)
+               return;
+
+            final NXCSession session = Registry.getSession();
+            new Job(i18n.tr("Creating interface"), view, null) {
+               @Override
+               protected void run(IProgressMonitor monitor) throws Exception
+               {
+                  NXCObjectCreationData cd = new NXCObjectCreationData(AbstractObject.OBJECT_BUSINESSSERVICE, dlg.getName(), parentId);
+                  cd.setInstanceDiscoveryMethod(dlg.getInstanceDiscoveyMethod());
+                  session.createObject(cd);
+               }
+
+               @Override
+               protected String getErrorMessage()
+               {
+                  return String.format(i18n.tr("Cannot create interface object %s"), dlg.getName());
+               }
+            }.start();
+         }
+      };
 
       actionProperties = new Action("&Properties...") {
          @Override
@@ -217,6 +256,8 @@ public class ObjectContextMenuManager extends MenuManager
       addAction(createMenu, actionCreateMobileDevice, (AbstractObject o) -> (o instanceof Container) || (o instanceof ServiceRoot));
       addAction(createMenu, actionCreateRack, (AbstractObject o) -> (o instanceof Container) || (o instanceof ServiceRoot));
       addAction(createMenu, actionCreateVpnConnector, (AbstractObject o) -> o instanceof Node);
+      addAction(createMenu, actionCreateBusinessService, (AbstractObject o) -> (o instanceof BusinessService) || (o instanceof BusinessServiceRoot));
+      addAction(createMenu, actionCreateBusinessServicePrototype, (AbstractObject o) -> (o instanceof BusinessService) || (o instanceof BusinessServiceRoot));
       if (!createMenu.isEmpty())
          add(createMenu);
 
