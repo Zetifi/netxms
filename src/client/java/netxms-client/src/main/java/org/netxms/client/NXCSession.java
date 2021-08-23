@@ -12702,7 +12702,7 @@ public class NXCSession
     */
    public void deleteBusinessServiceCheck(long businessServiceid, long checkId) throws NXCException, IOException
    {
-      final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_GET_CHECK_LIST);
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_DELETE_CHECK);
       msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)businessServiceid);
       msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_ID, (int)checkId);
       sendMessage(msg);
@@ -12719,7 +12719,7 @@ public class NXCSession
     */
    public void modifyBusinessServiceCheck(long businessServiceid, ServiceCheck check) throws NXCException, IOException
    {
-      final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_GET_CHECK_LIST);
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_BUSINESS_SERVICE_UPDATE_CHECK);
       msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)businessServiceid);
       check.fillMessage(msg);
       sendMessage(msg);
