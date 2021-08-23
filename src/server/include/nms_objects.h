@@ -4462,17 +4462,13 @@ protected:
    PollState m_statusPollState;
    PollState m_configurationPollState;
 
-   /*bool m_busy;
-   bool m_pollingDisabled;
-   time_t m_lastPollTime;*/
+   void updateSLMChecks();
    //uint32_t m_lastPollStatus;
 
    /*virtual void prepareForDeletion() override;
 
    virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
    virtual UINT32 modifyFromMessageInternal(NXCPMessage *pRequest) override;*/
-
-   
 
 public:
    BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance);
@@ -4505,33 +4501,20 @@ protected:
    uint32_t m_instanceDiscoveryMethod;
    TCHAR m_instanceDiscoveryData[1024];
    PollState m_discoveryPollState;
-   /*bool m_busy;
-   bool m_pollingDisabled;
-   time_t m_lastPollTime;*/
    //uint32_t m_lastPollStatus;
 
    /*virtual void prepareForDeletion() override;
 
    virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
    virtual UINT32 modifyFromMessageInternal(NXCPMessage *pRequest) override;*/
-
-
-
 public:
 
    BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData);
    virtual ~BusinessServicePrototype();
 
-
-
    //virtual bool loadFromDatabase(DB_HANDLE hdb);
    /*virtual bool saveToDatabase(DB_HANDLE hdb) override;
    virtual bool deleteFromDatabase(DB_HANDLE hdb) override;*/
-
-   /*bool isReadyForPolling();
-   void lockForPolling();
-   void poll(PollerInfo *poller);
-   void poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller);*/
 
    void startForcedDiscoveryPoll() { m_discoveryPollState.manualStart(); }
    void instanceDiscoveryPollWorkerEntry(PollerInfo *poller) { instanceDiscoveryPoll(poller, nullptr, 0); }

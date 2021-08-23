@@ -209,6 +209,7 @@ void BusinessService::lockForPolling()
 
 void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
+   poller->startExecution();
    if (IsShutdownInProgress())
    {
       m_busy = false;
@@ -233,13 +234,49 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
 	//m_lastPollStatus = m_status;
 	DbgPrintf(5, _T("Finished status polling of business service %s [%d]"), m_name, (int)m_id);
 	m_busy = false;
+   delete poller;
 }
 
 void BusinessService::configurationPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
-   
+   lockProperties();
+   if (m_isDeleteInitiated || IsShutdownInProgress())
+   {
+      m_configurationPollState.complete(0);
+      unlockProperties();
+      return;
+   }
+   unlockProperties();
+
+   poller->startExecution();
+
+   poller->setStatus(_T("wait for lock"));
+   //pollerLock(configuration);
+
+   if (IsShutdownInProgress())
+   {
+      //pollerUnlock();
+      return;
+   }
+
+   //m_pollRequestor = pSession;
+   //m_pollRequestId = dwRqId;
+
+   nxlog_debug_tag(DEBUG_TAG, 5, _T("Business service(%s): Auto binding SLM checks"), m_name);
+   if (true)
+      updateSLMChecks();
+
+   sendPollerMsg(_T("Configuration poll finished\r\n"));
+   nxlog_debug_tag(DEBUG_TAG, 6, _T("BusinessServiceConfPoll(%s): finished"), m_name);
+
+   //pollerUnlock();
+   delete poller;
 }
 
+void BusinessService::updateSLMChecks()
+{
+
+}
 
 /**
  * Prepare business service object for deletion
@@ -367,7 +404,10 @@ BusinessServicePrototype::~BusinessServicePrototype()
 {
 }
 
-void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo*, ClientSession*, unsigned int)
+void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
+   poller->startExecution();
 
+
+   delete poller;
 }
