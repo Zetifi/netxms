@@ -36,42 +36,10 @@
  */
 BaseBusinessService::BaseBusinessService(uint32_t id) : m_checks(10, 10, Ownership::True)
 {
-	if (!super::loadFromDatabase(hdb, id))
-		return false;
-
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter ")
-													_T("FROM business_services WHERE service_id=?"));
-	if (hStmt == NULL)
-	{
-		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from business_services"));
-		return false;
-	}
-	DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_id);
-	DB_RESULT hResult = DBSelectPrepared(hStmt);
-	if (hResult == NULL)
-	{
-		DBFreeStatement(hStmt);
-		return false;
-	}
-
-	if (DBGetNumRows(hResult) == 0)
-	{
-		DBFreeResult(hResult);
-		DBFreeStatement(hStmt);
-		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot load business service object %ld - record missing"), (long)m_id);
-		return false;
-	}
-
-   isPrototype = (bool)DBGetFieldULong(hResult, 0, 0);
-   prototypeId = DBGetFieldULong(hResult, 0, 1);
-	DBGetField(hResult, 0, 2, instance, 1024);
-   uint32_t instanceMethod = DBGetFieldULong(hResult, 0, 3);
-	DBGetField(hResult, 0, 4, instanceData, 1024);
-
-	DBFreeResult(hResult);
-	DBFreeStatement(hStmt);
-
-	return true;
+   m_id = id;
+   m_busy = false;
+   m_pollingDisabled = false;
+	m_lastPollTime = time_t(0);
 }
 
 /**
@@ -193,15 +161,20 @@ BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, u
 /**
  * Constructor for new service object
  */
-BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance) : BaseBusinessService(id)
+BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance) : BaseBusinessService(id), m_statusPollState(_T("status")), m_configurationPollState(_T("status"))
 {
-	/*m_busy = false;
-   m_pollingDisabled = false;
-	m_lastPollTime = time_t(0);
+	/*
 	m_lastPollStatus = STATUS_UNKNOWN;*/
 	//_tcslcpy(m_name, name, MAX_OBJECT_NAME);
    m_prototypeId = prototypeId;
-   _tcsncpy(m_instance, instance, sizeof(m_instance));
+   if (instance != nullptr)
+   {
+      _tcsncpy(m_instance, instance, 1023);
+   }
+   else
+   {
+      m_instance[0] = 0;
+   }
 }
 
 /**
@@ -213,47 +186,15 @@ BusinessService::~BusinessService()
 
 
 
-
-
-
-/**
- * Save service to database
- */
-/*bool BusinessService::saveToDatabase(DB_HANDLE hdb)
-{
-   if (!IsDatabaseRecordExist(hdb, _T("business_services"), _T("service_id"), m_id))
-   {
-      TCHAR query[256];
-      _sntprintf(query, 256, _T("INSERT INTO business_services (service_id) VALUES (%u)"), m_id);
-      if (!DBQuery(hdb, query))
-         return false;
-   }
-
-	return super::saveToDatabase(hdb);
-}*/
-
-/**
- * Delete object from database
- */
-/*bool BusinessService::deleteFromDatabase(DB_HANDLE hdb)
-{
-   bool success = super::deleteFromDatabase(hdb);
-   if (success)
-   {
-      success = executeQueryOnObject(hdb, _T("DELETE FROM business_services WHERE service_id=?"));
-   }
-   return success;
-}*/
-
 /**
  * Check if service is ready for poll
  */
 bool BusinessService::isReadyForPolling()
 {
-   //lockProperties();
-	//bool ready = (time(NULL) - m_lastPollTime > g_slmPollingInterval) && !m_busy && !m_pollingDisabled;
-   //unlockProperties();
-   return true;
+   lockProperties();
+	bool ready = (time(NULL) - m_lastPollTime > g_slmPollingInterval) && !m_busy && !m_pollingDisabled;
+   unlockProperties();
+   return ready;
 }
 
 /**
@@ -261,40 +202,26 @@ bool BusinessService::isReadyForPolling()
  */
 void BusinessService::lockForPolling()
 {
-   /*lockProperties();
+   lockProperties();
 	m_busy = true;
-   unlockProperties();*/
+   unlockProperties();
 }
 
-/**
- * A callback for poller threads
- */
-void BusinessService::poll(PollerInfo *poller)
+void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
-   poller->startExecution();
-   poll(NULL, 0, poller);
-   delete poller;
-}
-
-/**
- * Status poll
- */
-void BusinessService::poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller)
-{
-   /*if (IsShutdownInProgress())
+   if (IsShutdownInProgress())
    {
       m_busy = false;
       return;
-   }*/
+   }
 
 	DbgPrintf(5, _T("Started polling of business service %s [%d]"), m_name, (int)m_id);
-	//m_lastPollTime = time(NULL);
+	m_lastPollTime = time(NULL);
 
 	// Loop through the kids and execute their either scripts or thresholds
-   //readLockChildList();
-
-   // Set the status based on what the kids' been up to
+   readLockChildList();
    calculateCompoundStatus();
+   unlockChildList();
 
 	for (int i = 0; i < m_checks.size(); i++)
 	{
@@ -304,10 +231,14 @@ void BusinessService::poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *p
 	}
 
 	//m_lastPollStatus = m_status;
-	DbgPrintf(5, _T("Finished polling of business service %s [%d]"), m_name, (int)m_id);
-	//m_busy = false;
+	DbgPrintf(5, _T("Finished status polling of business service %s [%d]"), m_name, (int)m_id);
+	m_busy = false;
 }
 
+void BusinessService::configurationPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
+{
+   
+}
 
 
 /**
@@ -417,10 +348,16 @@ uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
 /**
  * Service prototype constructor
  */
-BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData) : BaseBusinessService(id)
+BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData) : BaseBusinessService(id), m_discoveryPollState(_T("discovery"))
 {
-   m_instanceDiscoveryMethod = instanceDiscoveryMethod;
-   _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, sizeof(m_instanceDiscoveryData));
+   if (m_instanceDiscoveryData != nullptr)
+   {
+      _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, sizeof(m_instanceDiscoveryData));
+   }
+   else
+   {
+      m_instanceDiscoveryData[0] = 0;
+   }
 }
 
 /**

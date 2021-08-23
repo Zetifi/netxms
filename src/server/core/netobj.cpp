@@ -2155,7 +2155,7 @@ bool NetObj::isDataCollectionTarget() const
  */
 bool NetObj::isPollable() const
 {
-   return false;
+   return getObjectClass() == OBJECT_BUSINESS_SERVICE;
 }
 
 

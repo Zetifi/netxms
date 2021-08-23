@@ -4432,9 +4432,10 @@ class NXCORE_EXPORTABLE BaseBusinessService : public AbstractContainer
 {
 protected:
    ObjectArray<SlmCheck> m_checks;
-
    bool loadChecksFromDatabase(DB_HANDLE hdb);
-   
+   bool m_busy;
+   bool m_pollingDisabled;
+   time_t m_lastPollTime;
 
 public:
    BaseBusinessService(uint32_t id);
@@ -4444,6 +4445,10 @@ public:
    void deleteCheck(uint32_t checkId);
 
    static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);
+
+   virtual bool readyForStatusPoll() = 0;
+   virtual bool readyForConfigurationPoll() = 0;
+   virtual bool readyForDiscoveryPoll() = 0;
 };
 
 /**
@@ -4454,6 +4459,8 @@ class NXCORE_EXPORTABLE BusinessService : public BaseBusinessService
 protected:
    uint32_t m_prototypeId;
    TCHAR m_instance[1024];
+   PollState m_statusPollState;
+   PollState m_configurationPollState;
 
    /*bool m_busy;
    bool m_pollingDisabled;
@@ -4471,17 +4478,22 @@ public:
    BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance);
    virtual ~BusinessService();
 
-
-   
-
-   //virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
-   /*virtual bool saveToDatabase(DB_HANDLE hdb) override;
-   virtual bool deleteFromDatabase(DB_HANDLE hdb) override;*/
+   void startForcedStatusPoll() { m_statusPollState.manualStart(); }
+   void statusPollWorkerEntry(PollerInfo *poller)  { statusPoll(poller, nullptr, 0); }
+   void statusPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
+   void startForcedConfigurationPoll() { m_configurationPollState.manualStart(); }
+   void configurationPollWorkerEntry(PollerInfo *poller)  { configurationPoll(poller, nullptr, 0); }
+   void configurationPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
 
    bool isReadyForPolling();
    void lockForPolling();
    void poll(PollerInfo *poller);
    void poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller);
+
+   virtual bool readyForStatusPoll() { return true; } //TODO: check conditions
+   virtual bool readyForConfigurationPoll() { return true; } //TODO: check conditions
+   virtual bool readyForDiscoveryPoll() { return false; }
+
 };
 
 /**
@@ -4492,7 +4504,7 @@ class NXCORE_EXPORTABLE BusinessServicePrototype : public BaseBusinessService, p
 protected:
    uint32_t m_instanceDiscoveryMethod;
    TCHAR m_instanceDiscoveryData[1024];
-
+   PollState m_discoveryPollState;
    /*bool m_busy;
    bool m_pollingDisabled;
    time_t m_lastPollTime;*/
@@ -4521,9 +4533,13 @@ public:
    void poll(PollerInfo *poller);
    void poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller);*/
 
+   void startForcedDiscoveryPoll() { m_discoveryPollState.manualStart(); }
+   void instanceDiscoveryPollWorkerEntry(PollerInfo *poller) { instanceDiscoveryPoll(poller, nullptr, 0); }
    virtual void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId) override;
 
-
+   virtual bool readyForStatusPoll() { return false; }
+   virtual bool readyForConfigurationPoll() { return false; }
+   virtual bool readyForDiscoveryPoll() { return true; }  //TODO: check conditions
 };
 
 /**

@@ -795,13 +795,22 @@ static void QueueForPolling(NetObj *object, void *data)
 			break;
 		case OBJECT_BUSINESS_SERVICE:
 			{
-				auto service = static_cast<BusinessService*>(object);
-				if (service->isReadyForPolling())
-				{
-					service->lockForPolling();
-					nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 6, _T("Business service %d \"%s\" queued for poll"), (int)object->getId(), object->getName());
-					ThreadPoolExecuteSerialized(g_pollerThreadPool, threadKey, service, &BusinessService::poll, RegisterPoller(PollerType::BUSINESS_SERVICE, service->self()));
-				}
+				auto service = static_cast<BaseBusinessService*>(object);
+            if (service->readyForStatusPoll())
+            {
+               nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 6, _T("Business service %d \"%s\" queued for status poll"), (int)object->getId(), object->getName());
+					ThreadPoolExecuteSerialized(g_pollerThreadPool, threadKey, static_cast<BusinessService*>(service), &BusinessService::statusPollWorkerEntry, RegisterPoller(PollerType::STATUS, service->self()));
+            }
+            if (service->readyForConfigurationPoll())
+            {
+               nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 6, _T("Business service %d \"%s\" queued for configuration poll"), (int)object->getId(), object->getName());
+					ThreadPoolExecuteSerialized(g_pollerThreadPool, threadKey, static_cast<BusinessService*>(service), &BusinessService::configurationPollWorkerEntry, RegisterPoller(PollerType::CONFIGURATION, service->self()));
+            }
+            if (service->readyForDiscoveryPoll())
+            {
+               nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 6, _T("Business service prototype %d \"%s\" queued for instance discovery poll"), (int)object->getId(), object->getName());
+					ThreadPoolExecuteSerialized(g_pollerThreadPool, threadKey, static_cast<BusinessServicePrototype*>(service), &BusinessServicePrototype::instanceDiscoveryPollWorkerEntry, RegisterPoller(PollerType::INSTANCE_DISCOVERY, service->self()));
+            }
 			}
 			break;
 		case OBJECT_ZONE:
