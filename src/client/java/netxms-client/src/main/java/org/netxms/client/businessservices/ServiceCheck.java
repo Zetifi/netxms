@@ -101,7 +101,7 @@ public class ServiceCheck
 	   msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_TYPE, checkType);
       msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_RELATED_OBJECT, (int)objectId);
       msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_RELATED_DCI, (int)dciId);
-      msg.setField(NXCPCodes.VID_SLMCHECK_TYPE, script);
+      msg.setField(NXCPCodes.VID_SCRIPT, script);
       msg.setFieldInt32(NXCPCodes.VID_THRESHOLD, threshold);
 	}
 
