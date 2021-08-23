@@ -97,6 +97,7 @@ public class ServiceCheck
 	public void fillMessage(NXCPMessage msg)
 	{
 	   msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_ID, (int)id);
+      msg.setField(NXCPCodes.VID_DESCRIPTION, description);
 	   msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_TYPE, checkType);
       msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_RELATED_OBJECT, (int)objectId);
       msg.setFieldInt32(NXCPCodes.VID_SLMCHECK_RELATED_DCI, (int)dciId);
