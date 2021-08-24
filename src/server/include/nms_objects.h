@@ -2077,13 +2077,6 @@ enum GeoLocationControlMode
    GEOLOCATION_ALLOWED_AREAS = 2
 };
 
-class InstanceDiscoveryPollable
-{
-public:
-   void instanceDiscoveryPoll(PollerInfo *poller) { instanceDiscoveryPoll(poller, nullptr, 0); }
-   virtual void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId) = 0;
-};
-
 /**
  * Common base class for all objects capable of collecting data
  */
@@ -4389,7 +4382,7 @@ protected:
    NXSL_Value *getNodeObjectForNXSL(NXSL_VM *vm);
 
 public:
-   SlmCheck();
+   SlmCheck(uint32_t serviceId = 0);
    virtual ~SlmCheck();
 
    int getType() { return m_type; }
@@ -4438,13 +4431,14 @@ class NXCORE_EXPORTABLE BaseBusinessService : public AbstractContainer
 protected:
    ObjectArray<SlmCheck> m_checks;
    bool loadChecksFromDatabase(DB_HANDLE hdb);
+   void deleteCheckFromDatabase(uint32_t checkId);
    bool m_busy;
    bool m_pollingDisabled;
    time_t m_lastPollTime;
 
 public:
    BaseBusinessService(uint32_t id);
-   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; } //TODO: DO we need another class for Prototypes?
+   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; } //TODO: we DO need another class for Prototypes
    ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
    void deleteCheck(uint32_t checkId);
 
@@ -4501,7 +4495,7 @@ public:
 /**
  * Business service object
  */
-class NXCORE_EXPORTABLE BusinessServicePrototype : public BaseBusinessService, public InstanceDiscoveryPollable
+class NXCORE_EXPORTABLE BusinessServicePrototype : public BaseBusinessService
 {
 protected:
    uint32_t m_instanceDiscoveryMethod;
@@ -4524,7 +4518,7 @@ public:
 
    void startForcedDiscoveryPoll() { m_discoveryPollState.manualStart(); }
    void instanceDiscoveryPollWorkerEntry(PollerInfo *poller) { instanceDiscoveryPoll(poller, nullptr, 0); }
-   virtual void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId) override;
+   void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
 
    virtual bool readyForStatusPoll() { return false; }
    virtual bool readyForConfigurationPoll() { return false; }

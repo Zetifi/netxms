@@ -307,6 +307,7 @@ void NetObjInsert(const shared_ptr<NetObj>& object, bool newObject, bool importe
 			case OBJECT_DASHBOARD:
 			case OBJECT_BUSINESS_SERVICE_ROOT:
 			case OBJECT_BUSINESS_SERVICE:
+         case OBJECT_BUSINESS_SERVICE_PROTOTYPE:
 			case OBJECT_RACK:
             break;
          case OBJECT_NODE:
@@ -465,6 +466,7 @@ void NetObjDeleteFromIndexes(const NetObj& object)
 		case OBJECT_DASHBOARD:
 		case OBJECT_BUSINESS_SERVICE_ROOT:
 		case OBJECT_BUSINESS_SERVICE:
+      case OBJECT_BUSINESS_SERVICE_PROTOTYPE:
 		case OBJECT_RACK:
 			break;
       case OBJECT_NODE:
@@ -2007,7 +2009,7 @@ BOOL LoadObjects()
 
    // Loading business service objects
    DbgPrintf(2, _T("Loading business services..."));
-   _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("SELECT id FROM object_containers WHERE object_class=%d"), OBJECT_BUSINESS_SERVICE);
+   _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("SELECT id FROM object_containers WHERE object_class=%d"), OBJECT_BUSINESS_SERVICE); //FIXME: add prototypes
    hResult = DBSelect(hdb, query);
    if (hResult != nullptr)
    {

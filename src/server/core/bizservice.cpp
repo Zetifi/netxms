@@ -80,13 +80,32 @@ bool BaseBusinessService::loadChecksFromDatabase(DB_HANDLE hdb)
 
 void BaseBusinessService::deleteCheck(uint32_t checkId)
 {
-   for (auto it = m_checks.begin(); it.hasNext(); it++)
+   for (auto it = m_checks.begin(); it.hasNext();)
    {
-      if (it.value()->getId() == checkId)
+      if (it.next()->getId() == checkId)
       {
          it.remove();
+         deleteCheckFromDatabase(checkId);
          break;
       }
+   }
+}
+
+void BaseBusinessService::deleteCheckFromDatabase(uint32_t checkId)
+{
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   if(hdb != nullptr)
+   {
+      DB_STATEMENT hStmt = DBPrepare(hdb, _T("DELETE FROM slm_checks WHERE id=?"));
+      if (hStmt != nullptr)
+      {
+         //lockProperties();
+         DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, checkId);
+         DBExecute(hStmt);
+         DBFreeStatement(hStmt);
+         //unlockProperties();
+      }
+      DBConnectionPoolReleaseConnection(hdb);
    }
 }
 
@@ -167,7 +186,7 @@ void BaseBusinessService::modifyCheckFromMessage(NXCPMessage *request)
    }
    if(check == nullptr)
    {
-      check = new SlmCheck();
+      check = new SlmCheck(m_id);
       m_checks.add(check);
    }
    check->modifyFromMessage(request);
@@ -337,7 +356,7 @@ void BusinessService::updateSLMChecks()
 
 void GetCheckList(uint32_t serviceId, NXCPMessage *response)
 {
-   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
+   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId));
    if (service == nullptr)
    {
       return;
@@ -356,7 +375,7 @@ void GetCheckList(uint32_t serviceId, NXCPMessage *response)
 uint32_t ModifyCheck(NXCPMessage *request)
 {
    uint32_t serviceId = request->getFieldAsUInt32(VID_OBJECT_ID);
-   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
+   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId));
    if (service == nullptr)
    {
       return RCC_INVALID_OBJECT_ID;
@@ -368,7 +387,7 @@ uint32_t ModifyCheck(NXCPMessage *request)
 
 uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
 {
-   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId, OBJECT_BUSINESS_SERVICE));
+   shared_ptr<BaseBusinessService> service = static_pointer_cast<BaseBusinessService>(FindObjectById(serviceId));
    if (service == nullptr)
    {
       return RCC_INVALID_OBJECT_ID;

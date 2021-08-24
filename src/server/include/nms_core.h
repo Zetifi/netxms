@@ -579,7 +579,8 @@ private:
    bool readSocket();
    MessageReceiverResult readMessage(bool allowSocketRead);
    void finalize();
-   void pollerThread(shared_ptr<DataCollectionTarget> object, int pollType, uint32_t requestId);
+   //void pollerThread(shared_ptr<DataCollectionTarget> object, int pollType, uint32_t requestId);
+   void pollerThread(shared_ptr<NetObj> object, int pollType, uint32_t requestId);
 
    void processRequest(NXCPMessage *request);
    void processFileTransferMessage(NXCPMessage *msg);

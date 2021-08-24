@@ -25,7 +25,7 @@
 /**
  * SLM check default constructor
  */
-SlmCheck::SlmCheck()
+SlmCheck::SlmCheck(uint32_t serviceId)
 {
 	m_id = 0;
 	m_type = 0;
@@ -35,7 +35,7 @@ SlmCheck::SlmCheck()
 	m_relatedObject = 0;
 	m_relatedDCI = 0;
 	m_currentTicket = 0;
-	m_serviceId = 0;
+	m_serviceId = serviceId;
 	_tcscpy(m_name, _T("Default check name")); //FIXME: check names in DB?
 }
 
@@ -159,7 +159,7 @@ bool SlmCheck::saveToDatabase()
 	DB_STATEMENT hStmt;
 	if (IsDatabaseRecordExist(hdb, _T("slm_checks"), _T("id"), m_id))
 	{
-		hStmt = DBPrepare(hdb, _T("UPDATE slm_checks SET type=?,content=?,threshold_id=?,reason=?,is_template=?,template_id=?,current_ticket=? WHERE id=?"));
+		hStmt = DBPrepare(hdb, _T("UPDATE slm_checks SET service_id=?,type=?,description=?,related_object=?,related_dci=?,status_threshold=?,content=?,current_ticket=? WHERE id=?"));
 	}
 	else
 	{

@@ -6933,14 +6933,11 @@ void ClientSession::forcedNodePoll(NXCPMessage *pRequest)
    if (object != nullptr)
    {
       // We can do polls for node, sensor, cluster objects
-      if (((object->getObjectClass() == OBJECT_NODE) &&
-          ((pollType == POLL_CONFIGURATION_FULL) ||
-			  (pollType == POLL_TOPOLOGY) ||
-			  (pollType == POLL_INTERFACE_NAMES)))
-			  || (object->isDataCollectionTarget() &&
-          ((pollType == POLL_STATUS) ||
-			  (pollType == POLL_CONFIGURATION_NORMAL) ||
-			  (pollType == POLL_INSTANCE_DISCOVERY))))
+      bool isValidNodePoll = object->getObjectClass() == OBJECT_NODE && (pollType == POLL_CONFIGURATION_FULL || pollType == POLL_TOPOLOGY || pollType == POLL_INTERFACE_NAMES);
+      bool isValidDataCollectionTargetPoll = object->isDataCollectionTarget() && (pollType == POLL_STATUS || pollType == POLL_CONFIGURATION_NORMAL || pollType == POLL_INSTANCE_DISCOVERY);
+      bool isValidBusinessServicePoll = object->getObjectClass() == OBJECT_BUSINESS_SERVICE && (pollType == POLL_STATUS || pollType == POLL_CONFIGURATION_NORMAL);
+      bool isValidBusinessServicePrototypePoll = object->getObjectClass() == OBJECT_BUSINESS_SERVICE && pollType == POLL_INSTANCE_DISCOVERY;
+      if (isValidNodePoll || isValidDataCollectionTargetPoll || isValidBusinessServicePoll || isValidBusinessServicePrototypePoll)
       {
          // Check access rights
          if (((pollType == POLL_CONFIGURATION_FULL) && object->checkAccessRights(m_dwUserId, OBJECT_ACCESS_MODIFY)) ||
@@ -6948,8 +6945,17 @@ void ClientSession::forcedNodePoll(NXCPMessage *pRequest)
          {
             InterlockedIncrement(&m_refCount);
 
-            ThreadPoolExecute(g_clientThreadPool, this, &ClientSession::pollerThread,
-                     static_pointer_cast<DataCollectionTarget>(object), pollType, pRequest->getId());
+            if (isValidNodePoll || isValidDataCollectionTargetPoll)
+            {
+               ThreadPoolExecute(g_clientThreadPool, this, &ClientSession::pollerThread,
+                     object, pollType, pRequest->getId());
+            }
+            else
+            {
+               ThreadPoolExecute(g_clientThreadPool, this, &ClientSession::pollerThread,
+                     object, pollType, pRequest->getId());
+            }
+
 
             NXCPMessage msg(CMD_POLLING_INFO, pRequest->getId());
             msg.setField(VID_RCC, RCC_OPERATION_IN_PROGRESS);
@@ -6992,29 +6998,52 @@ void ClientSession::sendPollerMsg(uint32_t requestId, const TCHAR *text)
 /**
  * Node poller thread
  */
-void ClientSession::pollerThread(shared_ptr<DataCollectionTarget> object, int pollType, uint32_t requestId)
+void ClientSession::pollerThread(shared_ptr<NetObj> object, int pollType, uint32_t requestId)
 {
    // Wait while parent thread finishes initialization
    MutexLock(m_mutexPollerInit);
    MutexUnlock(m_mutexPollerInit);
-
    switch(pollType)
    {
       case POLL_STATUS:
-         object->startForcedStatusPoll();
-         object->statusPollWorkerEntry(RegisterPoller(PollerType::STATUS, object), this, requestId);
+         if (object->getObjectClass() == OBJECT_BUSINESS_SERVICE)
+         {
+            static_cast<BusinessService&>(*object).startForcedStatusPoll();
+            static_cast<BusinessService&>(*object).statusPoll(RegisterPoller(PollerType::STATUS, object), this, requestId);
+         }
+         else
+         {
+            static_cast<DataCollectionTarget&>(*object).startForcedStatusPoll();
+            static_cast<DataCollectionTarget&>(*object).statusPollWorkerEntry(RegisterPoller(PollerType::STATUS, object), this, requestId);
+         }
          break;
       case POLL_CONFIGURATION_FULL:
          if (object->getObjectClass() == OBJECT_NODE)
             static_cast<Node&>(*object).setRecheckCapsFlag();
          // intentionally no break here
       case POLL_CONFIGURATION_NORMAL:
-         object->startForcedConfigurationPoll();
-         object->configurationPollWorkerEntry(RegisterPoller(PollerType::CONFIGURATION, object), this, requestId);
+         if (object->getObjectClass() == OBJECT_BUSINESS_SERVICE)
+         {
+            static_cast<BusinessService&>(*object).startForcedConfigurationPoll();
+            static_cast<BusinessService&>(*object).configurationPoll(RegisterPoller(PollerType::CONFIGURATION, object), this, requestId);
+         }
+         else
+         {
+            static_cast<DataCollectionTarget&>(*object).startForcedConfigurationPoll();
+            static_cast<DataCollectionTarget&>(*object).configurationPollWorkerEntry(RegisterPoller(PollerType::CONFIGURATION, object), this, requestId);
+         }
          break;
       case POLL_INSTANCE_DISCOVERY:
-         object->startForcedInstancePoll();
-         object->instanceDiscoveryPollWorkerEntry(RegisterPoller(PollerType::INSTANCE_DISCOVERY, object), this, requestId);
+         if (object->getObjectClass() == OBJECT_BUSINESS_SERVICE)
+         {
+            static_cast<BusinessServicePrototype&>(*object).startForcedDiscoveryPoll();
+            static_cast<BusinessServicePrototype&>(*object).instanceDiscoveryPoll(RegisterPoller(PollerType::INSTANCE_DISCOVERY, object), this, requestId);
+         }
+         else
+         {
+            static_cast<DataCollectionTarget&>(*object).startForcedInstancePoll();
+            static_cast<DataCollectionTarget&>(*object).instanceDiscoveryPollWorkerEntry(RegisterPoller(PollerType::INSTANCE_DISCOVERY, object), this, requestId);
+         }
          break;
       case POLL_TOPOLOGY:
          if (object->getObjectClass() == OBJECT_NODE)
@@ -15990,7 +16019,11 @@ void ClientSession::businessServiceGetCheckList(NXCPMessage *request)
 
 
 /**
- *
+ * Input parameters
+ * VID_SLMCHECK_ID
+ * VID_SLMCHECK_TYPE
+ * VID_SLMCHECK_RELATED_OBJECT
+ * 
  */
 void ClientSession::businessServiceModifyCheck(NXCPMessage *request)
 {

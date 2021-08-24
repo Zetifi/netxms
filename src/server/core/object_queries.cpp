@@ -460,6 +460,7 @@ unique_ptr<ObjectArray<ObjectQueryResult>> QueryObjects(const TCHAR *query, uint
    vm->addConstant("TEMPLATEROOT", vm->createValue(OBJECT_TEMPLATEROOT));
    vm->addConstant("VPNCONNECTOR", vm->createValue(OBJECT_VPNCONNECTOR));
    vm->addConstant("ZONE", vm->createValue(OBJECT_ZONE));
+   vm->addConstant("BUSINESSSERVICEPROTOTYPE", vm->createValue(OBJECT_BUSINESS_SERVICE_PROTOTYPE));
 
    unique_ptr<SharedObjectArray<NetObj>> objects = g_idxObjectById.getObjects(FilterAccessibleObjects);
    auto resultSet = new ObjectArray<ObjectQueryResult>(64, 64, Ownership::True);
