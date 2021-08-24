@@ -68,10 +68,10 @@ void SlmCheck::modifyFromMessage(NXCPMessage *request)
    {
       m_relatedDCI = request->getFieldAsUInt32(VID_SLMCHECK_RELATED_DCI);
    }
-	if (request->isFieldExist(VID_SLMCHECK_CURRENT_TICKET))
+	/*if (request->isFieldExist(VID_SLMCHECK_CURRENT_TICKET))
    {
       m_currentTicket = request->getFieldAsUInt32(VID_SLMCHECK_CURRENT_TICKET);
-   }
+   }*/
 	if (request->isFieldExist(VID_SCRIPT))
    {
 		MemFree(m_script);
@@ -314,12 +314,14 @@ uint32_t SlmCheck::execute()
 					if (m_status == STATUS_CRITICAL)
 					{
 						NXSL_Variable *reason = pGlobals->find("$reason");
-						if (reason != nullptr)
+						if (reason != nullptr && reason->getValue()->getValueAsCString()[0] != 0)
 						{
-							_tcslcpy(m_reason, CHECK_NULL_EX(reason->getValue()->getValueAsCString()), 256);
+							nxlog_write_tag(6, DEBUG_TAG, _T("Found reason :%s"), reason->getValue()->getValueAsCString());
+							_tcslcpy(m_reason, reason->getValue()->getValueAsCString(), 256);
 						}
 						else
 						{
+							nxlog_write_tag(6, DEBUG_TAG, _T("Not found reason"));
 							_tcslcpy(m_reason, _T("Check script returns error"), 256);
 						}
 					}
