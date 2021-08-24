@@ -155,17 +155,11 @@ BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, u
 	DBFreeResult(hResult);
 	DBFreeStatement(hStmt);
 
-   if (!service->loadChecksFromDatabase(hdb))
+   if (!service->loadFromDatabase(hdb, id))
    {
       delete_and_null(service);
    }
 
-   /*if(!service->loadFromDatabase(hdb))
-   {
-      //if (!super::loadFromDatabase(hdb, id))
-		//return false;
-      delete_and_null(service);
-   }*/
    return service;
 }
 
@@ -190,6 +184,13 @@ void BaseBusinessService::modifyCheckFromMessage(NXCPMessage *request)
       m_checks.add(check);
    }
    check->modifyFromMessage(request);
+}
+
+bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
+{
+   if (!super::loadFromDatabase(hdb, id))
+      return  false;
+   return loadChecksFromDatabase(hdb);
 }
 
 
@@ -411,9 +412,9 @@ uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
  */
 BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData) : BaseBusinessService(id), m_discoveryPollState(_T("discovery"))
 {
-   if (m_instanceDiscoveryData != nullptr)
+   if (instanceDiscoveryData != nullptr)
    {
-      _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, sizeof(m_instanceDiscoveryData));
+      _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, 1023);
    }
    else
    {

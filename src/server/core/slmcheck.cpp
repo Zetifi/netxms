@@ -22,6 +22,8 @@
 
 #include "nxcore.h"
 
+#define DEBUG_TAG _T("slm.check")
+
 /**
  * SLM check default constructor
  */
@@ -50,37 +52,25 @@ SlmCheck::~SlmCheck()
 
 void SlmCheck::modifyFromMessage(NXCPMessage *request)
 {
-	nxlog_write(5, _T("got initial id %ld"), (long)m_id);
-	/*if (request->isFieldExist(VID_SLMCHECK_ID))
-   {
-      m_id = request->getFieldAsUInt32(VID_SLMCHECK_ID);
-		nxlog_write(5, _T("got id %ld"), (long)m_id);
-   }*/ // FIXME: Probably we should not allow to change check id
-
+	// If new check
    if (m_id == 0)
       m_id = CreateUniqueId(IDG_SLM_CHECK);
-
-	nxlog_write(5, _T("got final id %ld"), (long)m_id);
 
 	if (request->isFieldExist(VID_SLMCHECK_TYPE))
    {
       m_type = request->getFieldAsUInt32(VID_SLMCHECK_TYPE);
-		nxlog_write(5, _T("got type %ld"), (long)m_type);
    }
 	if (request->isFieldExist(VID_SLMCHECK_RELATED_OBJECT))
    {
       m_relatedObject = request->getFieldAsUInt32(VID_SLMCHECK_RELATED_OBJECT);
-		nxlog_write(5, _T("got r obj %ld"), (long)m_relatedObject);
    }
 	if (request->isFieldExist(VID_SLMCHECK_RELATED_DCI))
    {
       m_relatedDCI = request->getFieldAsUInt32(VID_SLMCHECK_RELATED_DCI);
-		nxlog_write(5, _T("got r dci %ld"), (long)m_relatedDCI);
    }
 	if (request->isFieldExist(VID_SLMCHECK_CURRENT_TICKET))
    {
       m_currentTicket = request->getFieldAsUInt32(VID_SLMCHECK_CURRENT_TICKET);
-		nxlog_write(5, _T("got cur tick %ld"), (long)m_currentTicket);
    }
 	if (request->isFieldExist(VID_SCRIPT))
    {
@@ -91,7 +81,6 @@ void SlmCheck::modifyFromMessage(NXCPMessage *request)
 	if (request->isFieldExist(VID_DESCRIPTION))
    {
       request->getFieldAsString(VID_DESCRIPTION, m_name, 1023);
-		nxlog_write(5, _T("got check name %s"), (long)m_name);
    }
 
 	saveToDatabase();
@@ -123,6 +112,8 @@ void SlmCheck::compileScript()
    const int errorMsgLen = 512;
    TCHAR errorMsg[errorMsgLen];
 
+	if (m_pCompiledScript != nullptr)
+		delete m_pCompiledScript;
    m_pCompiledScript = NXSLCompileAndCreateVM(m_script, errorMsg, errorMsgLen, new NXSL_ServerEnv);
    if (m_pCompiledScript != NULL)
    {
@@ -131,7 +122,7 @@ void SlmCheck::compileScript()
    }
    else
    {
-      nxlog_write(NXLOG_WARNING, _T("Failed to compile script for service check object %s [%u] (%s)"), _T("Default Name"), m_id, errorMsg);
+      nxlog_write(NXLOG_WARNING, _T("Failed to compile script for service check object %s [%u] (%s)"), m_name, m_id, errorMsg);
    }
 }
 
@@ -140,12 +131,42 @@ void SlmCheck::fillMessage(NXCPMessage *msg, uint64_t baseId)
 {
    msg->setField(baseId, m_id);
    msg->setField(baseId + 1, m_type);
-   msg->setField(baseId + 2, m_reason);
+   msg->setField(baseId + 2, getReason());
    msg->setField(baseId + 3, m_relatedDCI);
    msg->setField(baseId + 4, m_relatedObject);
    msg->setField(baseId + 5, m_statusThreshold);
    msg->setField(baseId + 6, m_name);
    msg->setField(baseId + 7, m_script);
+}
+
+const TCHAR* SlmCheck::getReason()
+{
+	if (m_reason[0] == 0 && m_currentTicket != 0)
+	{
+   	DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+		if (hdb)
+		{
+			DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT reason ")
+															_T("FROM slm_tickets WHERE ticket_id=?"));
+			if (hStmt == NULL)
+			{
+				nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from slm_tickets"));
+			}
+			else
+			{
+				DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_currentTicket);
+				DB_RESULT hResult = DBSelectPrepared(hStmt);
+				if (hResult != NULL)
+				{
+					DBGetField(hResult, 0, 1, m_reason, 255);
+					DBFreeResult(hResult);
+				}
+				DBFreeStatement(hStmt);
+			}
+			DBConnectionPoolReleaseConnection(hdb);
+		}
+	}
+	return m_reason;
 }
 
 /**
@@ -293,9 +314,17 @@ uint32_t SlmCheck::execute()
 					if (m_status == STATUS_CRITICAL)
 					{
 						NXSL_Variable *reason = pGlobals->find("$reason");
-						setReason((reason != NULL) ? reason->getValue()->getValueAsCString() : _T("Check script returns error"));
+						if (reason != nullptr)
+						{
+							_tcslcpy(m_reason, CHECK_NULL_EX(reason->getValue()->getValueAsCString()), 256);
+						}
+						else
+						{
+							_tcslcpy(m_reason, _T("Check script returns error"), 256);
+						}
 					}
-					DbgPrintf(6, _T("SlmCheck::execute: %s [%ld] return value %d"), m_name, (long)m_id, pValue->getValueAsInt32());
+					nxlog_write_tag(6, DEBUG_TAG, _T("SlmCheck::execute script: %s [%ld] return value %d"), m_name, (long)m_id, pValue->getValueAsInt32());
+					nxlog_write_tag(6, DEBUG_TAG, _T("SlmCheck::script: %s"), m_script);
 				}
 				else
 				{
@@ -303,7 +332,7 @@ uint32_t SlmCheck::execute()
 
 					_sntprintf(buffer, 1024, _T("ServiceCheck::%s::%d"), m_name, m_id);
 					PostSystemEvent(EVENT_SCRIPT_ERROR, g_dwMgmtNode, "ssd", buffer, m_pCompiledScript->getErrorText(), m_id);
-			      nxlog_write(NXLOG_WARNING, _T("Failed to execute script for service check object %s [%u] (%s)"), m_name, m_id, m_pCompiledScript->getErrorText());
+			      nxlog_write_tag(2, DEBUG_TAG, _T("Failed to execute script for service check object %s [%u] (%s)"), m_name, m_id, m_pCompiledScript->getErrorText());
 					m_status = STATUS_UNKNOWN;
 				}
 				delete pGlobals;
@@ -320,11 +349,12 @@ uint32_t SlmCheck::execute()
 				{
 					shared_ptr<DataCollectionTarget> target = static_pointer_cast<DataCollectionTarget>(obj);
 					m_status = target->getDciThreshold(m_relatedDCI);
+					//nxlog_write_tag(6, DEBUG_TAG, _T("SlmCheck::execute DCI: %s [%ld] DCI value %d"), m_name, (long)m_id, pValue->getValueAsInt32());
 				}
 			}
 			break;
 		default:
-			DbgPrintf(4, _T("SlmCheck::execute() called for undefined check type, check %s/%ld"), m_name, (long)m_id);
+			nxlog_write_tag(4, DEBUG_TAG, _T("SlmCheck::execute() called for undefined check type, check %s/%ld"), m_name, (long)m_id);
 			m_status = STATUS_UNKNOWN;
 			break;
 	}
@@ -344,28 +374,38 @@ uint32_t SlmCheck::execute()
  */
 bool SlmCheck::insertTicket()
 {
-	DbgPrintf(4, _T("SlmCheck::insertTicket() called for %s [%d], reason='%s'"), _T("SomeName"), (int)m_id, m_reason);
+	nxlog_write_tag(4, DEBUG_TAG, _T("SlmCheck::insertTicket() called for %s [%d], reason='%s'"), m_name, (int)m_id, m_reason);
 
-	/*if (m_status == STATUS_NORMAL)
+	if (m_status == STATUS_NORMAL)
 		return false;
 
-	m_currentTicketId = CreateUniqueId(IDG_SLM_TICKET);
+	m_currentTicket = CreateUniqueId(IDG_SLM_TICKET);
 
 	bool success = false;
 	DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
 	DB_STATEMENT hStmt = DBPrepare(hdb, _T("INSERT INTO slm_tickets (ticket_id,check_id,service_id,create_timestamp,close_timestamp,reason) VALUES (?,?,?,?,0,?)"));
 	if (hStmt != NULL)
 	{
-		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_currentTicketId);
+		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_currentTicket);
 		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_id);
-		DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, getOwnerId());
+		DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, m_serviceId);
 		DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, (UINT32)time(NULL));
 		DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, m_reason, DB_BIND_TRANSIENT);
 		success = DBExecute(hStmt) ? true : false;
 		DBFreeStatement(hStmt);
 	}
-	DBConnectionPoolReleaseConnection(hdb);*/
-	return true /*success*/ ;
+
+	hStmt = DBPrepare(hdb, _T("UPDATE slm_checks SET current_ticket=? WHERE id=?"));
+	if (hStmt != NULL)
+	{
+		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_currentTicket);
+		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_id);
+		success = DBExecute(hStmt) ? true : false;
+		DBFreeStatement(hStmt);
+	}
+
+	DBConnectionPoolReleaseConnection(hdb);
+	return success;
 }
 
 /**

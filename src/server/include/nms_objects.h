@@ -4377,9 +4377,9 @@ protected:
 
    bool insertTicket();
    void closeTicket();
-   void setReason(const TCHAR *reason) { nx_strncpy(m_reason, CHECK_NULL_EX(reason), 256); }
    void compileScript();
    NXSL_Value *getNodeObjectForNXSL(NXSL_VM *vm);
+   const TCHAR* getReason();
 
 public:
    SlmCheck(uint32_t serviceId = 0);
@@ -4387,7 +4387,6 @@ public:
 
    int getType() { return m_type; }
    const TCHAR* getScript() { return m_script; } 
-   const TCHAR* getReason() { return m_reason; }
    uint32_t getId() { return m_id; }
    uint32_t getRelatedObject() { return m_relatedObject; }
    uint32_t getRelatedDCI() { return m_relatedDCI; }
@@ -4401,8 +4400,6 @@ public:
    void fillMessage(NXCPMessage *msg, uint64_t baseId);
    bool saveToDatabase();
    bool deleteFromDatabase();
-
-   //const TCHAR *getReason() { return m_reason; }
 };
 
 
@@ -4428,6 +4425,7 @@ public:
  */
 class NXCORE_EXPORTABLE BaseBusinessService : public AbstractContainer
 {
+  typedef AbstractContainer super;
 protected:
    ObjectArray<SlmCheck> m_checks;
    bool loadChecksFromDatabase(DB_HANDLE hdb);
@@ -4441,6 +4439,7 @@ public:
    virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; } //TODO: we DO need another class for Prototypes
    ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
    void deleteCheck(uint32_t checkId);
+   virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
 
    static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);
 
