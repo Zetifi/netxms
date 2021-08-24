@@ -35,6 +35,7 @@ SlmCheck::SlmCheck()
 	m_relatedObject = 0;
 	m_relatedDCI = 0;
 	m_currentTicket = 0;
+	m_serviceId = 0;
 	_tcscpy(m_name, _T("Default check name")); //FIXME: check names in DB?
 }
 
@@ -49,25 +50,37 @@ SlmCheck::~SlmCheck()
 
 void SlmCheck::modifyFromMessage(NXCPMessage *request)
 {
-	if (request->isFieldExist(VID_SLMCHECK_ID))
+	nxlog_write(5, _T("got initial id %ld"), (long)m_id);
+	/*if (request->isFieldExist(VID_SLMCHECK_ID))
    {
       m_id = request->getFieldAsUInt32(VID_SLMCHECK_ID);
-   }
+		nxlog_write(5, _T("got id %ld"), (long)m_id);
+   }*/ // FIXME: Probably we should not allow to change check id
+
+   if (m_id == 0)
+      m_id = CreateUniqueId(IDG_SLM_CHECK);
+
+	nxlog_write(5, _T("got final id %ld"), (long)m_id);
+
 	if (request->isFieldExist(VID_SLMCHECK_TYPE))
    {
       m_type = request->getFieldAsUInt32(VID_SLMCHECK_TYPE);
+		nxlog_write(5, _T("got type %ld"), (long)m_type);
    }
 	if (request->isFieldExist(VID_SLMCHECK_RELATED_OBJECT))
    {
       m_relatedObject = request->getFieldAsUInt32(VID_SLMCHECK_RELATED_OBJECT);
+		nxlog_write(5, _T("got r obj %ld"), (long)m_relatedObject);
    }
 	if (request->isFieldExist(VID_SLMCHECK_RELATED_DCI))
    {
       m_relatedDCI = request->getFieldAsUInt32(VID_SLMCHECK_RELATED_DCI);
+		nxlog_write(5, _T("got r dci %ld"), (long)m_relatedDCI);
    }
 	if (request->isFieldExist(VID_SLMCHECK_CURRENT_TICKET))
    {
       m_currentTicket = request->getFieldAsUInt32(VID_SLMCHECK_CURRENT_TICKET);
+		nxlog_write(5, _T("got cur tick %ld"), (long)m_currentTicket);
    }
 	if (request->isFieldExist(VID_SCRIPT))
    {
@@ -75,19 +88,27 @@ void SlmCheck::modifyFromMessage(NXCPMessage *request)
       m_script = request->getFieldAsString(VID_SCRIPT);
 		compileScript();
    }
+	if (request->isFieldExist(VID_DESCRIPTION))
+   {
+      request->getFieldAsString(VID_DESCRIPTION, m_name, 1023);
+		nxlog_write(5, _T("got check name %s"), (long)m_name);
+   }
+
+	saveToDatabase();
 }
 
 void SlmCheck::loadFromSelect(DB_RESULT hResult, int row)
 {
 	m_id = DBGetFieldULong(hResult, row, 0);
-	m_type = DBGetFieldULong(hResult, row, 1);
-   DBGetField(hResult, row, 2, m_name, 1023);
-	m_relatedObject = DBGetFieldULong(hResult, row, 3);
-	m_relatedDCI = DBGetFieldULong(hResult, row, 4);
-   m_statusThreshold = DBGetFieldULong(hResult, row, 5);
+	m_serviceId = DBGetFieldULong(hResult, row, 1);
+	m_type = DBGetFieldULong(hResult, row, 2);
+   DBGetField(hResult, row, 3, m_name, 1023);
+	m_relatedObject = DBGetFieldULong(hResult, row, 4);
+	m_relatedDCI = DBGetFieldULong(hResult, row, 5);
+   m_statusThreshold = DBGetFieldULong(hResult, row, 6);
 	MemFree(m_script);
-	m_script = DBGetField(hResult, row, 6, nullptr, 0);
-	m_currentTicket = DBGetFieldULong(hResult, row, 7);
+	m_script = DBGetField(hResult, row, 7, nullptr, 0);
+	m_currentTicket = DBGetFieldULong(hResult, row, 8);
 	compileScript();
 }
 
@@ -130,54 +151,55 @@ void SlmCheck::fillMessage(NXCPMessage *msg, uint64_t baseId)
 /**
  * Save service check to database
  */
-/*bool SlmCheck::saveToDatabase(DB_HANDLE hdb)
+bool SlmCheck::saveToDatabase()
 {
-   bool success = super::saveToDatabase(hdb);
-	if (success && (m_modified & MODIFY_OTHER))
-	{
-      DB_STATEMENT hStmt;
-      if (IsDatabaseRecordExist(hdb, _T("slm_checks"), _T("id"), m_id))
-      {
-         hStmt = DBPrepare(hdb, _T("UPDATE slm_checks SET type=?,content=?,threshold_id=?,reason=?,is_template=?,template_id=?,current_ticket=? WHERE id=?"));
-      }
-      else
-      {
-         hStmt = DBPrepare(hdb, _T("INSERT INTO slm_checks (type,content,threshold_id,reason,is_template,template_id,current_ticket,id) VALUES (?,?,?,?,?,?,?,?)"));
-      }
+   bool success = false;
 
-      if (hStmt != nullptr)
-      {
-         lockProperties();
-         DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, (UINT32)m_type);
-         DBBind(hStmt, 2, DB_SQLTYPE_TEXT, m_script, DB_BIND_STATIC);
-         DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, m_threshold ? m_threshold->getId() : 0);
-         DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, m_reason, DB_BIND_STATIC);
-         DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, (LONG)(m_isTemplate ? 1 : 0));
-         DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, m_templateId);
-         DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, m_currentTicketId);
-         DBBind(hStmt, 8, DB_SQLTYPE_INTEGER, m_id);
-         success = DBExecute(hStmt);
-         DBFreeStatement(hStmt);
-         unlockProperties();
-      }
-      else
-      {
-         success = false;
-      }
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+	DB_STATEMENT hStmt;
+	if (IsDatabaseRecordExist(hdb, _T("slm_checks"), _T("id"), m_id))
+	{
+		hStmt = DBPrepare(hdb, _T("UPDATE slm_checks SET type=?,content=?,threshold_id=?,reason=?,is_template=?,template_id=?,current_ticket=? WHERE id=?"));
 	}
+	else
+	{
+		hStmt = DBPrepare(hdb, _T("INSERT INTO slm_checks (service_id,type,description,related_object,related_dci,status_threshold,content,current_ticket,id) VALUES (?,?,?,?,?,?,?,?,?)"));
+	}
+
+	if (hStmt != nullptr)
+	{
+		//lockProperties();
+		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_serviceId);
+		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, (uint32_t)m_type);
+		DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, m_name, DB_BIND_STATIC);
+		DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, m_relatedObject);
+		DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, m_relatedDCI);
+		DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, m_statusThreshold);
+		DBBind(hStmt, 7, DB_SQLTYPE_TEXT, m_script, DB_BIND_STATIC);
+		DBBind(hStmt, 8, DB_SQLTYPE_INTEGER, m_currentTicket);
+		DBBind(hStmt, 9, DB_SQLTYPE_INTEGER, m_id);
+		success = DBExecute(hStmt);
+		DBFreeStatement(hStmt);
+		//unlockProperties();
+	}
+	else
+	{
+		success = false;
+	}
+	DBConnectionPoolReleaseConnection(hdb);
 	return success;
-}*/
+}
 
 /**
  * Delete object from database
  */
-/*bool SlmCheck::deleteFromDatabase(DB_HANDLE hdb)
+bool SlmCheck::deleteFromDatabase()
 {
-	bool success = super::deleteFromDatabase(hdb);
-	if (success)
-      success = executeQueryOnObject(hdb, _T("DELETE FROM slm_checks WHERE id=?"));
+	DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+	bool success = ExecuteQueryOnObject(hdb, m_id, _T("DELETE FROM slm_checks WHERE id=?"));
+	DBConnectionPoolReleaseConnection(hdb);
 	return success;
-}*/
+}
 
 /**
  * Create NXCP message with object's data
@@ -297,8 +319,7 @@ uint32_t SlmCheck::execute()
 				if (obj != nullptr && obj->isDataCollectionTarget())
 				{
 					shared_ptr<DataCollectionTarget> target = static_pointer_cast<DataCollectionTarget>(obj);
-					//FIXME: wrong, need to rewrite
-					m_status = STATUS_NORMAL;
+					m_status = target->getDciThreshold(m_relatedDCI);
 				}
 			}
 			break;

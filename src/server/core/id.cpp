@@ -37,7 +37,7 @@ void LoadLastEventId(DB_HANDLE hdb);
 /**
  * Constants
  */
-#define NUMBER_OF_GROUPS   29
+#define NUMBER_OF_GROUPS   30
 
 /**
  * Static data
@@ -52,7 +52,7 @@ static uint32_t s_freeIdTable[NUMBER_OF_GROUPS] =
       1, 1, 1, 1,
       1, 1, 1, 1,
       1, 1, 1, 1,
-      1
+      1, 1
    };
 static uint32_t s_idLimits[NUMBER_OF_GROUPS] =
    {
@@ -63,7 +63,7 @@ static uint32_t s_idLimits[NUMBER_OF_GROUPS] =
       0x7FFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE,
       0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE,
       0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE,
-      0xFFFFFFFE
+      0xFFFFFFFE, 0xFFFFFFFE
    };
 static const TCHAR *s_groupNames[NUMBER_OF_GROUPS] =
 {
@@ -95,7 +95,8 @@ static const TCHAR *s_groupNames[NUMBER_OF_GROUPS] =
    _T("Object Categories"),
    _T("Geographical Areas"),
    _T("SSH Keys"),
-   _T("Object Queries")
+   _T("Object Queries"),
+   _T("SLM Checks")
 };
 
 /**
@@ -530,6 +531,15 @@ bool InitIdTable()
    {
       if (DBGetNumRows(hResult) > 0)
          s_freeIdTable[IDG_OBJECT_QUERY] = std::max(s_freeIdTable[IDG_OBJECT_QUERY], DBGetFieldULong(hResult, 0, 0) + 1);
+      DBFreeResult(hResult);
+   }
+
+   // Get first available object query id
+   hResult = DBSelect(hdb, _T("SELECT max(id) FROM slm_checks"));
+   if (hResult != nullptr)
+   {
+      if (DBGetNumRows(hResult) > 0)
+         s_freeIdTable[IDG_SLM_CHECK] = std::max(s_freeIdTable[IDG_SLM_CHECK], DBGetFieldULong(hResult, 0, 0) + 1);
       DBFreeResult(hResult);
    }
 

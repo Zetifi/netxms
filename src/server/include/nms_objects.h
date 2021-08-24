@@ -2240,6 +2240,8 @@ public:
    uint64_t getCacheMemoryUsage();
 
    static void removeTemplate(const shared_ptr<ScheduledTaskParameters>& parameters);
+
+   int getDciThreshold(uint32_t dciId);
 };
 
 /**
@@ -4378,6 +4380,7 @@ protected:
    uint32_t m_relatedDCI;
    uint32_t m_currentTicket;
    int m_statusThreshold;
+   uint32_t m_serviceId;
 
    bool insertTicket();
    void closeTicket();
@@ -4403,6 +4406,8 @@ public:
    void modifyFromMessage(NXCPMessage *pRequest);
    void loadFromSelect(DB_RESULT hResult, int row);
    void fillMessage(NXCPMessage *msg, uint64_t baseId);
+   bool saveToDatabase();
+   bool deleteFromDatabase();
 
    //const TCHAR *getReason() { return m_reason; }
 };
@@ -4441,10 +4446,11 @@ public:
    BaseBusinessService(uint32_t id);
    virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; } //TODO: DO we need another class for Prototypes?
    ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
-   void addCheck(SlmCheck* check) { m_checks.add(check); }
    void deleteCheck(uint32_t checkId);
 
    static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);
+
+   void modifyCheckFromMessage(NXCPMessage *pRequest);
 
    virtual bool readyForStatusPoll() = 0;
    virtual bool readyForConfigurationPoll() = 0;

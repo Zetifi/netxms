@@ -148,6 +148,7 @@
 #define IDG_GEO_AREA          26
 #define IDG_SSH_KEY           27
 #define IDG_OBJECT_QUERY      28
+#define IDG_SLM_CHECK         29
 
 /**
  * Exit codes for console commands

@@ -49,7 +49,7 @@ bool BaseBusinessService::loadChecksFromDatabase(DB_HANDLE hdb)
 {
 	nxlog_debug_tag(DEBUG_TAG, 4, _T("Loading service checks for business service %ld"), (long)m_id);
 
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT id,type,description,related_object,related_dci,status_threshold,content,current_ticket ")
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT id,service_id,type,description,related_object,related_dci,status_threshold,content,current_ticket ")
 													_T("FROM slm_checks WHERE service_id=?"));
 
 	if (hStmt == nullptr)
@@ -148,6 +148,29 @@ BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, u
       delete_and_null(service);
    }*/
    return service;
+}
+
+void BaseBusinessService::modifyCheckFromMessage(NXCPMessage *request)
+{
+   uint32_t checkId = request->getFieldAsUInt32(VID_SLMCHECK_ID);
+   SlmCheck* check = nullptr;
+   if (checkId != 0)
+   {
+      for (auto c : m_checks)
+      {
+         if(c->getId() == checkId)
+         {
+            check = c;
+            break;
+         }
+      }
+   }
+   if(check == nullptr)
+   {
+      check = new SlmCheck();
+      m_checks.add(check);
+   }
+   check->modifyFromMessage(request);
 }
 
 
@@ -338,25 +361,7 @@ uint32_t ModifyCheck(NXCPMessage *request)
    {
       return RCC_INVALID_OBJECT_ID;
    }
-
-   uint32_t checkId = request->getFieldAsUInt32(VID_SLMCHECK_ID);
-   SlmCheck* check = nullptr;
-   for ( auto c : *service->getChecks())
-   {
-      if(c->getId() == checkId)
-      {
-         check = c;
-         break;
-      }
-   }
-
-   if(check == nullptr)
-   {
-      check = new SlmCheck();
-      service->addCheck(check);
-   }
-   check->modifyFromMessage(request);
-
+   service->modifyCheckFromMessage(request);
    return RCC_SUCCESS;
 }
 
