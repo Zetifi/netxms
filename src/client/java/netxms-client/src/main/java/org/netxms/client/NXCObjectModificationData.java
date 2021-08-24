@@ -175,6 +175,10 @@ public class NXCObjectModificationData
    private Integer categoryId;
    private GeoLocationControlMode geoLocationControlMode;
    private long[] geoAreas;
+   private String instance;
+   private Integer instanceDiscoveryMethod;
+   private String instanceDiscoveryData;
+   private String instanceDiscoveryFilter;
 
    /**
     * Constructor for creating modification data for given object
@@ -2115,5 +2119,69 @@ public class NXCObjectModificationData
    public void setGeoAreas(long[] geoAreas)
    {
       this.geoAreas = geoAreas;
+   }
+   
+   /**
+    * @param instance the instance to set
+    */
+   public void setInstance(String instance)
+   {
+      this.instance = instance;
+   }
+   
+   /**
+    * @return the instance
+    */
+   public String getInstance()
+   {
+      return instance;
+   }
+
+   /**
+    * @return the instanceDiscoveryMethod
+    */
+   public final Integer getInstanceDiscoveryMethod()
+   {
+      return instanceDiscoveryMethod;
+   }
+
+   /**
+    * @param instanceDiscoveryMethod the instanceDiscoveryMethod to set
+    */
+   public final void setInstanceDiscoveryMethod(int instanceDiscoveryMethod)
+   {
+      this.instanceDiscoveryMethod = instanceDiscoveryMethod;
+   }
+
+   /**
+    * @return the instanceDiscoveryData
+    */
+   public final String getInstanceDiscoveryData()
+   {
+      return instanceDiscoveryData;
+   }
+
+   /**
+    * @param instanceDiscoveryData the instanceDiscoveryData to set
+    */
+   public final void setInstanceDiscoveryData(String instanceDiscoveryData)
+   {
+      this.instanceDiscoveryData = instanceDiscoveryData;
+   }
+
+   /**
+    * @return the instanceDiscoveryFilter
+    */
+   public final String getInstanceDiscoveryFilter()
+   {
+      return instanceDiscoveryFilter;
+   }
+
+   /**
+    * @param instanceDiscoveryFilter the instanceDiscoveryFilter to set
+    */
+   public final void setInstanceDiscoveryFilter(String instanceDiscoveryFilter)
+   {
+      this.instanceDiscoveryFilter = instanceDiscoveryFilter;
    }
 }

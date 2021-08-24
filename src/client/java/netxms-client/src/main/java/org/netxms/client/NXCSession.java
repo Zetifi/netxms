@@ -1448,6 +1448,9 @@ public class NXCSession
          case AbstractObject.OBJECT_BUSINESSSERVICE:
             object = new BusinessService(msg, this);
             break;
+         case AbstractObject.OBJECT_BUSINESSSERVICE_PROTOTYPE:
+            object = new BusinessService(msg, this);
+            break;
          case AbstractObject.OBJECT_BUSINESSSERVICEROOT:
             object = new BusinessServiceRoot(msg, this);
             break;
@@ -6538,6 +6541,26 @@ public class NXCSession
          msg.setField(NXCPCodes.VID_GEO_AREAS, data.getGeoAreas());
       }
 
+      if (data.getInstance() != null)
+      {
+         msg.setField(NXCPCodes.VID_INSTANCE, data.getInstance());
+      }
+
+      if (data.getInstanceDiscoveryMethod() != null)
+      {
+         msg.setFieldInt32(NXCPCodes.VID_INSTD_METHOD, data.getInstanceDiscoveryMethod());
+      }
+
+      if (data.getInstanceDiscoveryData() != null)
+      {
+         msg.setField(NXCPCodes.VID_INSTD_DATA, data.getInstanceDiscoveryData());
+      }
+
+      if (data.getInstanceDiscoveryFilter() != null)
+      {
+         msg.setField(NXCPCodes.VID_INSTD_FILTER, data.getInstanceDiscoveryFilter());
+      }
+
       modifyCustomObject(data, userData, msg);
 
       sendMessage(msg);
@@ -9585,7 +9608,7 @@ public class NXCSession
     */
    public void pollNode(long nodeId, NodePollType pollType, final TextOutputListener listener) throws IOException, NXCException
    {
-      final NXCPMessage msg = newMessage(NXCPCodes.CMD_POLL_NODE);
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_POLL_OBJECT);
       msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)nodeId);
       msg.setFieldInt16(NXCPCodes.VID_POLL_TYPE, pollType.getValue());
 

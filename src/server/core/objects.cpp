@@ -1446,7 +1446,6 @@ BOOL LoadObjects()
                DBCacheTable(cachedb, mainDB, _T("dashboard_associations"), _T("object_id,dashboard_id"), _T("*")) &&
                DBCacheTable(cachedb, mainDB, _T("slm_checks"), _T("id"), _T("*")) &&
                DBCacheTable(cachedb, mainDB, _T("business_services"), _T("service_id"), _T("*")) &&
-               DBCacheTable(cachedb, mainDB, _T("node_links"), _T("nodelink_id"), _T("*")) &&
                DBCacheTable(cachedb, mainDB, _T("acl"), _T("object_id,user_id"), _T("*")) &&
                DBCacheTable(cachedb, mainDB, _T("trusted_nodes"), _T("source_object_id,target_node_id"), _T("*")) &&
                DBCacheTable(cachedb, mainDB, _T("auto_bind_target"), _T("object_id"), _T("*")) &&
