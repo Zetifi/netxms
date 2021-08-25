@@ -5761,9 +5761,9 @@ void ClientSession::createObject(NXCPMessage *request)
                      case OBJECT_BUSINESS_SERVICE_PROTOTYPE:
                      case OBJECT_BUSINESS_SERVICE:
                         {
-                           auto service = shared_ptr<BaseBusinessService>(BusinessService::createBusinessService(objectName, objectClass, request));
+                           object = shared_ptr<BaseBusinessService>(BusinessService::createBusinessService(objectName, objectClass, request));
                            //object = make_shared<BusinessService>(0, 0, nullptr);
-                           NetObjInsert(service, true, false);
+                           NetObjInsert(object, true, false);
                         }
                         break;
                      case OBJECT_CHASSIS:
@@ -5856,22 +5856,10 @@ void ClientSession::createObject(NXCPMessage *request)
                         }
                         break;
                      }
-                     /*case OBJECT_NODELINK:
-                        nodeId = request->getFieldAsUInt32(VID_NODE_ID);
-                        if (nodeId > 0)
-                        {
-                           object = make_shared<NodeLink>(objectName, nodeId);
-                           NetObjInsert(object, true, false);
-                        }
-                        break;*/
                      case OBJECT_RACK:
                         object = make_shared<Rack>(objectName, (int)request->getFieldAsUInt16(VID_HEIGHT));
                         NetObjInsert(object, true, false);
                         break;
-                     //case OBJECT_SLMCHECK:
-                        //object = make_shared<SlmCheck>(objectName, request->getFieldAsBoolean(VID_IS_TEMPLATE));
-                        //NetObjInsert(object, true, false);
-                        //break;
                      case OBJECT_SUBNET:
                      {
                         auto ipAddr = request->getFieldAsInetAddress(VID_IP_ADDRESS);
