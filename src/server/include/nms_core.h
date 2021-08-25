@@ -1310,6 +1310,8 @@ void NXCORE_EXPORTABLE NotifyClientSession(session_id_t sessionId, uint32_t code
 void NXCORE_EXPORTABLE NotifyClientsOnGraphUpdate(const NXCPMessage& msg, uint32_t graphId);
 void NotifyClientsOnPolicyUpdate(const NXCPMessage& msg, const Template& object);
 void NotifyClientsOnPolicyDelete(uuid guid, const Template& object);
+void NotifyClientsOnSlmCheckUpdate(const NetObj& service, SlmCheck* check);
+void NotifyClientsOnSlmCheckDelete(const NetObj& service, uint32_t checkId);
 void NotifyClientsOnDCIUpdate(const DataCollectionOwner& object, DCObject *dco);
 void NotifyClientsOnDCIDelete(const DataCollectionOwner& object, uint32_t dcoId);
 void NotifyClientsOnDCIStatusChange(const DataCollectionOwner& object, uint32_t dcoId, int status);

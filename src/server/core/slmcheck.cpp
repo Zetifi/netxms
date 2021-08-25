@@ -296,7 +296,8 @@ uint32_t SlmCheck::execute()
 				shared_ptr<NetObj> obj = FindObjectById(m_relatedObject);
 				if (obj != nullptr)
 				{
-					m_status = obj->getStatus();
+					m_status = obj->getStatus() >= m_statusThreshold ? STATUS_NORMAL : STATUS_CRITICAL;
+					_tcslcpy(m_reason, _T("SLM check node status threshold violation"), 256);
 				}
 			}
 			break;
@@ -316,12 +317,10 @@ uint32_t SlmCheck::execute()
 						NXSL_Variable *reason = pGlobals->find("$reason");
 						if (reason != nullptr && reason->getValue()->getValueAsCString()[0] != 0)
 						{
-							nxlog_write_tag(6, DEBUG_TAG, _T("Found reason :%s"), reason->getValue()->getValueAsCString());
 							_tcslcpy(m_reason, reason->getValue()->getValueAsCString(), 256);
 						}
 						else
 						{
-							nxlog_write_tag(6, DEBUG_TAG, _T("Not found reason"));
 							_tcslcpy(m_reason, _T("Check script returns error"), 256);
 						}
 					}
@@ -350,7 +349,8 @@ uint32_t SlmCheck::execute()
 				if (obj != nullptr && obj->isDataCollectionTarget())
 				{
 					shared_ptr<DataCollectionTarget> target = static_pointer_cast<DataCollectionTarget>(obj);
-					m_status = target->getDciThreshold(m_relatedDCI);
+					m_status = target->getDciThreshold(m_relatedDCI) >= m_statusThreshold ? STATUS_NORMAL : STATUS_CRITICAL;
+					_tcslcpy(m_reason, _T("SLM check DCI status threshold violation"), 256);
 					//nxlog_write_tag(6, DEBUG_TAG, _T("SlmCheck::execute DCI: %s [%ld] DCI value %d"), m_name, (long)m_id, pValue->getValueAsInt32());
 				}
 			}
@@ -415,41 +415,20 @@ bool SlmCheck::insertTicket()
  */
 void SlmCheck::closeTicket()
 {
-	/*DbgPrintf(4, _T("SlmCheck::closeTicket() called for %s [%d], ticketId=%d"), m_name, (int)m_id, (int)m_currentTicketId);
+	nxlog_write_tag(4, DEBUG_TAG, _T("SlmCheck::closeTicket() called for %s [%d], ticketId=%d"), m_name, (int)m_id, (int)m_currentTicket);
 	DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
 	DB_STATEMENT hStmt = DBPrepare(hdb, _T("UPDATE slm_tickets SET close_timestamp=? WHERE ticket_id=?"));
 	if (hStmt != NULL)
 	{
 		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, (UINT32)time(NULL));
-		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_currentTicketId);
+		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_currentTicket);
 		DBExecute(hStmt);
 		DBFreeStatement(hStmt);
 	}
 	DBConnectionPoolReleaseConnection(hdb);
-	m_currentTicketId = 0;*/
+	m_currentTicket = 0;
+	m_reason[0] = 0;
 }
-
-/**
- * Get ID of owning SLM object (business service or node link)
- */
-/*UINT32 SlmCheck::getOwnerId()
-{
-	UINT32 ownerId = 0;
-
-	readLockParentList();
-	for(int i = 0; i < getParentList().size(); i++)
-	{
-      NetObj *object = getParentList().get(i);
-		if ((object->getObjectClass() == OBJECT_BUSINESSSERVICE) ||
-		    (object->getObjectClass() == OBJECT_NODELINK))
-		{
-			ownerId = object->getId();
-			break;
-		}
-	}
-	unlockParentList();
-	return ownerId;
-}*/
 
 /**
  * Get related node object for use in NXSL script

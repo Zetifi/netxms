@@ -4391,7 +4391,7 @@ public:
    uint32_t getRelatedObject() { return m_relatedObject; }
    uint32_t getRelatedDCI() { return m_relatedDCI; }
    uint32_t getCurrentTicket() { return m_currentTicket; }
-
+   uint32_t getStatus() { return m_status; }
 
    uint32_t execute();
 
@@ -4435,12 +4435,14 @@ protected:
    time_t m_lastPollTime;
 
 public:
+   BaseBusinessService(const TCHAR* name);
    BaseBusinessService(uint32_t id);
-   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; } //TODO: we DO need another class for Prototypes
    ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
    void deleteCheck(uint32_t checkId);
    virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
+   virtual bool saveToDatabase(DB_HANDLE hdb) override;
 
+   static BaseBusinessService* createBusinessService(const TCHAR* name, int objectClass, NXCPMessage *request);
    static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);
 
    void modifyCheckFromMessage(NXCPMessage *pRequest);
@@ -4470,9 +4472,11 @@ protected:
    virtual UINT32 modifyFromMessageInternal(NXCPMessage *pRequest) override;*/
 
 public:
+   BusinessService(const TCHAR *name);
    BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance);
    virtual ~BusinessService();
 
+   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; }
    void startForcedStatusPoll() { m_statusPollState.manualStart(); }
    void statusPollWorkerEntry(PollerInfo *poller)  { statusPoll(poller, nullptr, 0); }
    void statusPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
@@ -4507,9 +4511,11 @@ protected:
    virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
    virtual UINT32 modifyFromMessageInternal(NXCPMessage *pRequest) override;*/
 public:
-
+   BusinessServicePrototype(const TCHAR *name, uint32_t method);
    BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData);
    virtual ~BusinessServicePrototype();
+
+   virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE_PROTOTYPE; }
 
    //virtual bool loadFromDatabase(DB_HANDLE hdb);
    /*virtual bool saveToDatabase(DB_HANDLE hdb) override;

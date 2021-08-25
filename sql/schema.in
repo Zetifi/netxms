@@ -1974,8 +1974,8 @@ CREATE TABLE dashboard_associations
 CREATE TABLE business_services
 (
   service_id integer not null,
-  is_protopype char(1) not null,
-  protopype_id integer not null,
+  is_prototype char(1) not null,
+  prototype_id integer not null,
   instance varchar(1023),
   instance_method integer not null,
   instance_data varchar(1023),

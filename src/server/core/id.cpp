@@ -194,14 +194,6 @@ bool InitIdTable()
                                                    DBGetFieldULong(hResult, 0, 0) + 1);
       DBFreeResult(hResult);
    }
-   hResult = DBSelect(hdb, _T("SELECT max(id) FROM slm_checks"));
-   if (hResult != NULL)
-   {
-      if (DBGetNumRows(hResult) > 0)
-         s_freeIdTable[IDG_NETWORK_OBJECT] = std::max(s_freeIdTable[IDG_NETWORK_OBJECT],
-                                                   DBGetFieldULong(hResult, 0, 0) + 1);
-      DBFreeResult(hResult);
-   }
    hResult = DBSelect(hdb, _T("SELECT max(id) FROM mobile_devices"));
    if (hResult != NULL)
    {

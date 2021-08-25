@@ -43,6 +43,17 @@ BaseBusinessService::BaseBusinessService(uint32_t id) : m_checks(10, 10, Ownersh
 }
 
 /**
+ * Service default constructor
+ */
+BaseBusinessService::BaseBusinessService(const TCHAR* name) : m_checks(10, 10, Ownership::True), super(name, 0)
+{
+   //m_id = CreateUniqueId(IDG_NETWORK_OBJECT);
+   m_busy = false;
+   m_pollingDisabled = false;
+	m_lastPollTime = time_t(0);
+}
+
+/**
  * Load SLM checks from database
  */
 bool BaseBusinessService::loadChecksFromDatabase(DB_HANDLE hdb)
@@ -103,10 +114,48 @@ void BaseBusinessService::deleteCheckFromDatabase(uint32_t checkId)
          DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, checkId);
          DBExecute(hStmt);
          DBFreeStatement(hStmt);
+         NotifyClientsOnSlmCheckDelete(*this, checkId);
          //unlockProperties();
       }
       DBConnectionPoolReleaseConnection(hdb);
    }
+}
+
+BaseBusinessService* BaseBusinessService::createBusinessService(const TCHAR* name, int objectClass, NXCPMessage *request)
+{
+
+   BaseBusinessService* service = nullptr;
+   if(objectClass == OBJECT_BUSINESS_SERVICE_PROTOTYPE)
+   {
+      uint32_t instanceDiscoveryMethod = 0;
+      if (request->isFieldExist(VID_INSTD_METHOD))
+      {
+         instanceDiscoveryMethod = request->getFieldAsUInt32(VID_INSTD_METHOD);
+      }
+      service = new BusinessServicePrototype(name, instanceDiscoveryMethod);
+   }
+   else
+   {
+
+      service = new BusinessService(name);
+   }
+
+   /*DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+
+   if (hdb != nullptr)
+   {
+
+      if (!service->saveToDatabase(hdb))
+      {
+         delete_and_null(service);
+      }
+      DBConnectionPoolReleaseConnection(hdb);
+   }
+   else
+   {
+      delete_and_null(service);
+   }*/
+   return service;
 }
 
 BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, uint32_t id)
@@ -184,6 +233,7 @@ void BaseBusinessService::modifyCheckFromMessage(NXCPMessage *request)
       m_checks.add(check);
    }
    check->modifyFromMessage(request);
+   NotifyClientsOnSlmCheckUpdate(*this, check);
 }
 
 bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
@@ -192,6 +242,41 @@ bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
       return  false;
    return loadChecksFromDatabase(hdb);
 }
+
+bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
+{
+   if (!super::saveToDatabase(hdb))
+      return  false;
+
+   DB_STATEMENT hStmt;
+	if (IsDatabaseRecordExist(hdb, _T("business_services"), _T("service_id"), m_id))
+	{
+		hStmt = DBPrepare(hdb, _T("UPDATE business_services SET is_prototype=?,prototype_id=?,instance=?,instance_method=?,instance_data=?,instance_filter=? WHERE service_id=?"));
+	}
+	else
+	{
+		hStmt = DBPrepare(hdb, _T("INSERT INTO business_services (is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter,service_id) VALUES (?,?,?,?,?,?,?)"));
+	}
+
+   bool success = false;
+	if (hStmt != nullptr)
+	{
+		//lockProperties();
+		DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, (false ? _T("1") :_T("0")), DB_BIND_STATIC);
+		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, 0);
+		DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, _T(""), DB_BIND_STATIC);
+		DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, 0);
+		DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, _T(""), DB_BIND_STATIC);
+		DBBind(hStmt, 6, DB_SQLTYPE_TEXT, _T(""), DB_BIND_STATIC);
+		DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, m_id);
+		success = DBExecute(hStmt);
+		DBFreeStatement(hStmt);
+		//unlockProperties();
+	}
+
+   return success;
+}
+
 
 
 /* ************************************
@@ -204,7 +289,7 @@ bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 /**
  * Constructor for new service object
  */
-BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance) : BaseBusinessService(id), m_statusPollState(_T("status")), m_configurationPollState(_T("status"))
+BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance) : BaseBusinessService(id), m_statusPollState(_T("status")), m_configurationPollState(_T("configuration"))
 {
 	/*
 	m_lastPollStatus = STATUS_UNKNOWN;*/
@@ -218,6 +303,18 @@ BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR 
    {
       m_instance[0] = 0;
    }
+}
+
+/**
+ * Constructor for new service object
+ */
+BusinessService::BusinessService(const TCHAR *name) : BaseBusinessService(name), m_statusPollState(_T("status")), m_configurationPollState(_T("configuration"))
+{
+	/*
+	m_lastPollStatus = STATUS_UNKNOWN;*/
+	//_tcslcpy(m_name, name, MAX_OBJECT_NAME);
+   m_prototypeId = 0;
+   m_instance[0] = 0;
 }
 
 /**
@@ -267,11 +364,14 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
    calculateCompoundStatus();
    unlockChildList();
 
-	for (int i = 0; i < m_checks.size(); i++)
+	for (auto check : m_checks)
 	{
-      uint32_t checkStatus = m_checks.get(i)->execute();
-      if (checkStatus > m_status)
-         m_status = checkStatus;
+      uint32_t oldStatus = check->getStatus();
+      uint32_t newStatus = check->execute();
+      if (oldStatus != newStatus)
+      	NotifyClientsOnSlmCheckUpdate(*this, check);
+      if (newStatus > m_status)
+         m_status = newStatus;
 	}
 
 	//m_lastPollStatus = m_status;
@@ -412,6 +512,7 @@ uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
  */
 BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData) : BaseBusinessService(id), m_discoveryPollState(_T("discovery"))
 {
+   m_instanceDiscoveryMethod = instanceDiscoveryMethod;
    if (instanceDiscoveryData != nullptr)
    {
       _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, 1023);
@@ -420,6 +521,15 @@ BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanc
    {
       m_instanceDiscoveryData[0] = 0;
    }
+}
+
+/**
+ * Service prototype constructor
+ */
+BusinessServicePrototype::BusinessServicePrototype(const TCHAR *name, uint32_t instanceDiscoveryMethod) : BaseBusinessService(name), m_discoveryPollState(_T("discovery"))
+{
+   m_instanceDiscoveryMethod = instanceDiscoveryMethod;
+   m_instanceDiscoveryData[0] = 0;
 }
 
 /**
@@ -433,6 +543,32 @@ void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientS
 {
    poller->startExecution();
 
+   /*StringList* instances = getInstances();
+   ObjectArray<BaseBusinessService>* services = getServices();
+   if (instances != nullptr && services != nullptr)
+   {
+      ObjectArray<BaseBusinessService> services = getServices();
+      for (auto it = services.begin(); it.hasNext(); it++)
+      {
+         int index = instances->indexOf(it.next()->getInstance());
+         if (index >= 0)
+         {
+            instances->remove(index);
+            it.remove();
+         }
+         
+      }
+   }
+
+   for (auto service : *services)
+   {
+      deleteBusinessService(service);
+   }
+
+   for (auto inst : *instances)
+   {
+      createBusinessService(inst);
+   }*/
 
    delete poller;
 }

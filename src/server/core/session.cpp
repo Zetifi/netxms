@@ -5758,9 +5758,13 @@ void ClientSession::createObject(NXCPMessage *request)
                   TCHAR deviceId[MAX_OBJECT_NAME];
                   switch(objectClass)
                   {
+                     case OBJECT_BUSINESS_SERVICE_PROTOTYPE:
                      case OBJECT_BUSINESS_SERVICE:
-                        object = make_shared<BusinessService>(0, 0, nullptr);
-                        NetObjInsert(object, true, false);
+                        {
+                           auto service = shared_ptr<BaseBusinessService>(BusinessService::createBusinessService(objectName, objectClass, request));
+                           //object = make_shared<BusinessService>(0, 0, nullptr);
+                           NetObjInsert(service, true, false);
+                        }
                         break;
                      case OBJECT_CHASSIS:
                         object = make_shared<Chassis>(objectName, request->getFieldAsUInt32(VID_CONTROLLER_ID));
