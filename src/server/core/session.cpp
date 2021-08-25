@@ -5762,7 +5762,6 @@ void ClientSession::createObject(NXCPMessage *request)
                      case OBJECT_BUSINESS_SERVICE:
                         {
                            object = shared_ptr<BaseBusinessService>(BusinessService::createBusinessService(objectName, objectClass, request));
-                           //object = make_shared<BusinessService>(0, 0, nullptr);
                            NetObjInsert(object, true, false);
                         }
                         break;

@@ -68,10 +68,6 @@ void SlmCheck::modifyFromMessage(NXCPMessage *request)
    {
       m_relatedDCI = request->getFieldAsUInt32(VID_SLMCHECK_RELATED_DCI);
    }
-	/*if (request->isFieldExist(VID_SLMCHECK_CURRENT_TICKET))
-   {
-      m_currentTicket = request->getFieldAsUInt32(VID_SLMCHECK_CURRENT_TICKET);
-   }*/
 	if (request->isFieldExist(VID_SCRIPT))
    {
 		MemFree(m_script);

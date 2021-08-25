@@ -4434,6 +4434,14 @@ protected:
    bool m_pollingDisabled;
    time_t m_lastPollTime;
 
+   TCHAR *m_autobindDCIScript;
+   NXSL_VM *m_pCompiledAutobindDCIScript;
+   bool m_autounbindDCIFlag;
+
+   TCHAR *m_autobindObjectScript;
+   NXSL_VM *m_pCompiledAutobindObjectScript;
+   bool m_autounbindObjectFlag;
+
 public:
    BaseBusinessService(const TCHAR* name);
    BaseBusinessService(uint32_t id);
@@ -4466,10 +4474,11 @@ protected:
    void updateSLMChecks();
    //uint32_t m_lastPollStatus;
 
-   /*virtual void prepareForDeletion() override;
+   /*virtual void prepareForDeletion() override;*/
 
    virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
-   virtual UINT32 modifyFromMessageInternal(NXCPMessage *pRequest) override;*/
+   void compileObjectBindingScript();
+   virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
 
 public:
    BusinessService(const TCHAR *name);
@@ -4506,10 +4515,10 @@ protected:
    PollState m_discoveryPollState;
    //uint32_t m_lastPollStatus;
 
-   /*virtual void prepareForDeletion() override;
+   /*virtual void prepareForDeletion() override;*/
 
    virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
-   virtual UINT32 modifyFromMessageInternal(NXCPMessage *pRequest) override;*/
+   virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
 public:
    BusinessServicePrototype(const TCHAR *name, uint32_t method);
    BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData);

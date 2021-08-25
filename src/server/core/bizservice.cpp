@@ -40,6 +40,12 @@ BaseBusinessService::BaseBusinessService(uint32_t id) : m_checks(10, 10, Ownersh
    m_busy = false;
    m_pollingDisabled = false;
 	m_lastPollTime = time_t(0);
+   m_autobindDCIScript = nullptr;
+   m_pCompiledAutobindDCIScript = nullptr;
+   m_autounbindDCIFlag = false;
+   m_autobindObjectScript = nullptr;
+   m_pCompiledAutobindObjectScript = nullptr;
+   m_autounbindObjectFlag = false;
 }
 
 /**
@@ -47,10 +53,15 @@ BaseBusinessService::BaseBusinessService(uint32_t id) : m_checks(10, 10, Ownersh
  */
 BaseBusinessService::BaseBusinessService(const TCHAR* name) : m_checks(10, 10, Ownership::True), super(name, 0)
 {
-   //m_id = CreateUniqueId(IDG_NETWORK_OBJECT);
    m_busy = false;
    m_pollingDisabled = false;
 	m_lastPollTime = time_t(0);
+   m_autobindDCIScript = nullptr;
+   m_pCompiledAutobindDCIScript = nullptr;
+   m_autounbindDCIFlag = false;
+   m_autobindObjectScript = nullptr;
+   m_pCompiledAutobindObjectScript = nullptr;
+   m_autounbindObjectFlag = false;
 }
 
 /**
@@ -239,8 +250,37 @@ void BaseBusinessService::modifyCheckFromMessage(NXCPMessage *request)
 bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 {
    if (!super::loadFromDatabase(hdb, id))
-      return  false;
-   return loadChecksFromDatabase(hdb);
+      return false;
+   if (!loadChecksFromDatabase(hdb))
+      return false;
+
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT object_bind_filter,object_unbind_flag,dci_bind_filter,dci_unbind_flag char ")
+													_T("FROM auto_bind_target WHERE object_id=?"));
+
+	if (hStmt == nullptr)
+	{
+		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from auto_bind_target"));
+		return false;
+	}
+	DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_id);
+	DB_RESULT hResult = DBSelectPrepared(hStmt);
+	if (hResult == nullptr)
+	{
+		DBFreeStatement(hStmt);
+		return false;
+	}
+
+   MemFree(m_autobindObjectScript);
+   m_autobindObjectScript = DBGetField(hResult, 0, 0, nullptr, 0);
+   m_autounbindObjectFlag = DBGetFieldLong(hResult, 0, 1) ? true : false;
+   MemFree(m_autobindDCIScript);
+   m_autobindDCIScript = DBGetField(hResult, 0, 2, nullptr, 0);
+   m_autounbindDCIFlag = DBGetFieldLong(hResult, 0, 3) ? true : false;
+
+   DBFreeResult(hResult);
+   DBFreeStatement(hStmt);
+
+   return true;
 }
 
 bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
@@ -273,6 +313,36 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
 		DBFreeStatement(hStmt);
 		//unlockProperties();
 	}
+
+   if (success)
+   {
+      if (IsDatabaseRecordExist(hdb, _T("auto_bind_target"), _T("object_id"), m_id))
+      {
+         hStmt = DBPrepare(hdb, _T("UPDATE auto_bind_target SET object_bind_filter=?,object_bind_flag='1',object_unbind_flag=?,dci_bind_filter=?,dci_bind_flag='1',dci_unbind_flag=? WHERE object_id=?"));
+      }
+      else
+      {
+         hStmt = DBPrepare(hdb, _T("INSERT INTO auto_bind_target (object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag,object_id) VALUES (?,'1',?,?,'1',?,?)"));
+      }
+
+      if (hStmt != nullptr)
+      {
+         //lockProperties();
+         DBBind(hStmt, 1, DB_SQLTYPE_TEXT, m_autobindObjectScript, DB_BIND_STATIC);
+         DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, (false ? _T("1") :_T("0")), DB_BIND_STATIC);
+         DBBind(hStmt, 3, DB_SQLTYPE_TEXT, m_autobindDCIScript, DB_BIND_STATIC);
+         DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, (false ? _T("1") :_T("0")), DB_BIND_STATIC);
+         DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, m_id);
+
+         success = DBExecute(hStmt);
+         DBFreeStatement(hStmt);
+         //unlockProperties();
+      }
+      else
+      {
+         success = false;
+      }
+   }
 
    return success;
 }
@@ -322,6 +392,65 @@ BusinessService::BusinessService(const TCHAR *name) : BaseBusinessService(name),
  */
 BusinessService::~BusinessService()
 {
+}
+
+uint32_t BusinessService::modifyFromMessageInternal(NXCPMessage *request)
+{
+   if (request->isFieldExist(VID_AUTOBIND_FLAG))
+   {
+      MemFree(m_autobindObjectScript);
+      m_autobindObjectScript = request->getFieldAsString(VID_AUTOBIND_FLAG);
+		compileObjectBindingScript();
+   }
+   if (request->isFieldExist(VID_AUTOUNBIND_FLAG))
+   {
+      MemFree(m_autobindObjectScript);
+      m_autobindObjectScript = request->getFieldAsString(VID_AUTOUNBIND_FLAG);
+		compileObjectBindingScript();
+   }
+   if (request->isFieldExist(VID_AUTOBIND_FILTER))
+   {
+      MemFree(m_autobindObjectScript);
+      m_autobindObjectScript = request->getFieldAsString(VID_AUTOBIND_FILTER);
+		compileObjectBindingScript();
+   }
+   return AbstractContainer::modifyFromMessageInternal(request);
+}
+
+void BusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
+{
+   msg->setField(VID_AUTOBIND_FLAG, m_autobindObjectScript != nullptr);
+   msg->setField(VID_AUTOUNBIND_FLAG, m_autounbindObjectFlag);
+   msg->setField(VID_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindObjectScript));
+   /*msg->setField(VID_AUTOBIND_FLAG, m_autobindDCIScript != nullptr);
+   msg->setField(VID_AUTOUNBIND_FLAG, m_autounbindDCIFlag);
+   msg->setField(VID_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindDCIScript));*/
+   return AbstractContainer::fillMessageInternal(msg, userId);
+}
+
+/**
+ * Compile script if there is one
+ */
+void BusinessService::compileObjectBindingScript()
+{
+	if (m_autobindObjectScript == nullptr)
+	   return;
+
+   const int errorMsgLen = 512;
+   TCHAR errorMsg[errorMsgLen];
+
+	if (m_pCompiledAutobindObjectScript != nullptr)
+		delete m_pCompiledAutobindObjectScript;
+   m_pCompiledAutobindObjectScript = NXSLCompileAndCreateVM(m_autobindObjectScript, errorMsg, errorMsgLen, new NXSL_ServerEnv);
+   if (m_pCompiledAutobindObjectScript != nullptr)
+   {
+      m_pCompiledAutobindObjectScript->addConstant("OK", m_pCompiledAutobindObjectScript->createValue((LONG)0));
+      m_pCompiledAutobindObjectScript->addConstant("FAIL", m_pCompiledAutobindObjectScript->createValue((LONG)1));
+   }
+   else
+   {
+      nxlog_write(NXLOG_WARNING, _T("Failed to compile script for service check object %s [%u] (%s)"), m_name, m_id, errorMsg);
+   }
 }
 
 
@@ -406,8 +535,7 @@ void BusinessService::configurationPoll(PollerInfo *poller, ClientSession *sessi
    //m_pollRequestId = dwRqId;
 
    nxlog_debug_tag(DEBUG_TAG, 5, _T("Business service(%s): Auto binding SLM checks"), m_name);
-   if (true)
-      updateSLMChecks();
+   updateSLMChecks();
 
    sendPollerMsg(_T("Configuration poll finished\r\n"));
    nxlog_debug_tag(DEBUG_TAG, 6, _T("BusinessServiceConfPoll(%s): finished"), m_name);
@@ -537,6 +665,16 @@ BusinessServicePrototype::BusinessServicePrototype(const TCHAR *name, uint32_t i
  */
 BusinessServicePrototype::~BusinessServicePrototype()
 {
+}
+
+uint32_t BusinessServicePrototype::modifyFromMessageInternal(NXCPMessage *pRequest)
+{
+   return AbstractContainer::modifyFromMessageInternal(pRequest);
+}
+
+void BusinessServicePrototype::fillMessageInternal(NXCPMessage *pMsg, uint32_t userId)
+{
+   AbstractContainer::fillMessageInternal(pMsg, userId);
 }
 
 void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
