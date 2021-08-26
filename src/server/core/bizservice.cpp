@@ -406,15 +406,11 @@ uint32_t BusinessService::modifyFromMessageInternal(NXCPMessage *request)
 {
    if (request->isFieldExist(VID_AUTOBIND_FLAG))
    {
-      MemFree(m_autobindObjectScript);
-      m_autobindObjectScript = request->getFieldAsString(VID_AUTOBIND_FLAG);
-		compileObjectBindingScript();
+      m_autoBindObjectFlag = request->getFieldAsBoolean(VID_AUTOBIND_FLAG);
    }
    if (request->isFieldExist(VID_AUTOUNBIND_FLAG))
    {
-      MemFree(m_autobindObjectScript);
-      m_autobindObjectScript = request->getFieldAsString(VID_AUTOUNBIND_FLAG);
-		compileObjectBindingScript();
+      m_autoUnbindObjectFlag = request->getFieldAsBoolean(VID_AUTOUNBIND_FLAG);
    }
    if (request->isFieldExist(VID_AUTOBIND_FILTER))
    {
@@ -430,9 +426,9 @@ void BusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
    msg->setField(VID_AUTOBIND_FLAG, m_autoBindObjectFlag);
    msg->setField(VID_AUTOUNBIND_FLAG, m_autoUnbindObjectFlag);
    msg->setField(VID_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindObjectScript));
-   /*msg->setField(VID_AUTOBIND_FLAG, m_autobindDCIScript != nullptr);
-   msg->setField(VID_AUTOUNBIND_FLAG, m_autounbindDCIFlag);
-   msg->setField(VID_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindDCIScript));*/
+   msg->setField(VID_DCI_AUTOBIND_FLAG, m_autoBindDCIFlag);
+   msg->setField(VID_DCI_AUTOUNBIND_FLAG, m_autoUnbindDCIFlag);
+   msg->setField(VID_DCI_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindDCIScript));
    return AbstractContainer::fillMessageInternal(msg, userId);
 }
 
@@ -575,33 +571,41 @@ void BusinessService::objectCheckAutoBinding()
       for (int i = 0; i < g_idxObjectById.size(); i++)
       {
          shared_ptr<NetObj> object = g_idxObjectById.get(i);
-         m_pCompiledAutobindObjectScript->setGlobalVariable("$object", object->createNXSLObject(m_pCompiledAutobindObjectScript));
-         if (object->getObjectClass() == OBJECT_NODE)
-            m_pCompiledAutobindObjectScript->setGlobalVariable("$node", object->createNXSLObject(m_pCompiledAutobindObjectScript));
-			if (m_pCompiledAutobindObjectScript->run(0, nullptr))
+         if (object != nullptr)
          {
-            NXSL_Value *pValue = m_pCompiledAutobindObjectScript->getResult();
-            if (!pValue->isNull())
+            m_pCompiledAutobindObjectScript->setGlobalVariable("$object", object->createNXSLObject(m_pCompiledAutobindObjectScript));
+            if (object->getObjectClass() == OBJECT_NODE)
+               m_pCompiledAutobindObjectScript->setGlobalVariable("$node", object->createNXSLObject(m_pCompiledAutobindObjectScript));
+            if (m_pCompiledAutobindObjectScript->run(0, nullptr))
             {
-               uint32_t foundCheckId = 0;
-               for (auto check : m_checks)
+               NXSL_Value *pValue = m_pCompiledAutobindObjectScript->getResult();
+               if (!pValue->isNull())
                {
-                  if (check->getType() == SlmCheck::NODE && check->getRelatedObject() == object->getId())
+                  uint32_t foundCheckId = 0;
+                  for (auto check : m_checks)
                   {
-                     foundCheckId = check->getId();
-                     break;
+                     if (check->getType() == SlmCheck::NODE && check->getRelatedObject() == object->getId())
+                     {
+                        foundCheckId = check->getId();
+                        break;
+                     }
                   }
-               }
-               if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindObjectFlag)
-               {
-                  deleteCheck(foundCheckId);
-               }
-               if (foundCheckId == 0 && pValue->isTrue())
-               {
-                  SlmCheck* check = new SlmCheck(m_id);
-                  m_checks.add(check);
-                  check->setRelatedObject(object->getId());
-                  NotifyClientsOnSlmCheckUpdate(*this, check);
+                  if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindObjectFlag)
+                  {
+                     deleteCheck(foundCheckId);
+                  }
+                  if (foundCheckId == 0 && pValue->isTrue())
+                  {
+                     SlmCheck* check = new SlmCheck(m_id);
+                     m_checks.add(check);
+                     check->setRelatedObject(object->getId());
+                     TCHAR checkName[MAX_OBJECT_NAME];
+                     _sntprintf(checkName, MAX_OBJECT_NAME, _T("%s[%ld] check"), object->getName(), object->getId());
+                     check->setName(checkName);
+                     check->generateId();
+                     check->saveToDatabase();
+                     NotifyClientsOnSlmCheckUpdate(*this, check);
+                  }
                }
             }
          }

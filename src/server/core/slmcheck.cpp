@@ -50,11 +50,16 @@ SlmCheck::~SlmCheck()
 	delete m_pCompiledScript;
 }
 
+void SlmCheck::generateId()
+{
+	m_id = CreateUniqueId(IDG_SLM_CHECK);
+}
+
 void SlmCheck::modifyFromMessage(NXCPMessage *request)
 {
 	// If new check
    if (m_id == 0)
-      m_id = CreateUniqueId(IDG_SLM_CHECK);
+		generateId();
 
 	if (request->isFieldExist(VID_SLMCHECK_TYPE))
    {

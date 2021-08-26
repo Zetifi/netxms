@@ -1465,7 +1465,10 @@ typedef struct
 #define VID_SLMCHECK_ID             ((uint32_t)769)
 #define VID_SLMCHECK_RELATED_OBJECT ((uint32_t)770)
 #define VID_SLMCHECK_RELATED_DCI    ((uint32_t)771)
-#define VID_SLMCHECK_CURRENT_TICKET ((uint32_t)772)
+#define VID_THRESHOLD               ((uint32_t)772)
+#define VID_DCI_AUTOBIND_FLAG       ((uint32_t)773)
+#define VID_DCI_AUTOUNBIND_FLAG     ((uint32_t)774)
+#define VID_DCI_AUTOBIND_FILTER     ((uint32_t)775)
 
 // Base variabe for single threshold in message
 #define VID_THRESHOLD_BASE          ((UINT32)0x00800000)

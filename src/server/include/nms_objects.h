@@ -4383,11 +4383,13 @@ public:
    int getType() { return m_type; }
    const TCHAR* getScript() { return m_script; } 
    uint32_t getId() { return m_id; }
+   void generateId();
    uint32_t getRelatedObject() { return m_relatedObject; }
    void setRelatedObject(uint32_t object) { m_relatedObject = object; }
    uint32_t getRelatedDCI() { return m_relatedDCI; }
    uint32_t getCurrentTicket() { return m_currentTicket; }
    uint32_t getStatus() { return m_status; }
+   void setName( const TCHAR* name ) { _tcslcpy(m_name, name, 1023); }
 
    uint32_t execute();
 

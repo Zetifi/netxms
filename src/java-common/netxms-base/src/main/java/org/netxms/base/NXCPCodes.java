@@ -1239,8 +1239,10 @@ public class NXCPCodes
    public static final long VID_SLMCHECK_ID  = 769;
    public static final long VID_SLMCHECK_RELATED_OBJECT = 770;
    public static final long VID_SLMCHECK_RELATED_DCI = 771;
-   public static final long VID_SLMCHECK_CURRENT_TICKET = 772;
-   public static final long VID_THRESHOLD = 773;
+   public static final long VID_THRESHOLD = 772;
+   public static final long VID_DCI_AUTOBIND_FLAG = 773;
+   public static final long VID_DCI_AUTOUNBIND_FLAG = 774;
+   public static final long VID_DCI_AUTOBIND_FILTER = 775;
 
 	public static final long VID_ACL_USER_BASE = 0x00001000L;
 	public static final long VID_ACL_USER_LAST = 0x00001FFFL;
