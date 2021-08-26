@@ -30,6 +30,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.netxms.client.NXCObjectModificationData;
 import org.netxms.client.NXCSession;
+import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.BusinessServicePrototype;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
@@ -50,7 +51,6 @@ public class InstanceDiscovery extends ObjectPropertyPage
 	private static final String[] DCI_FUNCTIONS = { "FindDCIByName", "FindDCIByDescription", "GetDCIObject", "GetDCIValue", "GetDCIValueByDescription", "GetDCIValueByName" }; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$
 	private static final String[] DCI_VARIABLES = { "$dci", "$node" }; //$NON-NLS-1$ //$NON-NLS-2$
 	
-	private BusinessServicePrototype prototype;
 	private Combo discoveryMethod;
 	private LabeledText discoveryData;
 	private ScriptEditor filterScript;
@@ -60,10 +60,9 @@ public class InstanceDiscovery extends ObjectPropertyPage
     * 
     * @param editor
     */
-   public InstanceDiscovery(BusinessServicePrototype prototype)
+   public InstanceDiscovery(AbstractObject prototype)
    {
       super(i18n.tr("Instance Discovery"), prototype);
-      this.prototype = prototype;
    }
 	
 	/* (non-Javadoc)
@@ -73,6 +72,7 @@ public class InstanceDiscovery extends ObjectPropertyPage
 	protected Control createContents(Composite parent)
 	{		
       Composite dialogArea = new Composite(parent, SWT.NONE);
+      BusinessServicePrototype prototype = (BusinessServicePrototype)object;
       
 		GridLayout layout = new GridLayout();
 		layout.verticalSpacing = WidgetHelper.OUTER_SPACING;

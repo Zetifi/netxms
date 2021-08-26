@@ -267,14 +267,4 @@ public final class StatusDisplayInfo
    {
       return getStatusColor(ObjectStatus.getByValue(code));
    }
-   
-   /**
-    * Get all avalilable status texts
-    * 
-    * @return array with status texts
-    */
-   public static String[] getStatusTexts()
-   {
-      return statusText;
-   }
 }

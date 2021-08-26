@@ -175,7 +175,6 @@ public class NXCObjectModificationData
    private Integer categoryId;
    private GeoLocationControlMode geoLocationControlMode;
    private long[] geoAreas;
-   private String instance;
    private Integer instanceDiscoveryMethod;
    private String instanceDiscoveryData;
    private String instanceDiscoveryFilter;
@@ -2119,22 +2118,6 @@ public class NXCObjectModificationData
    public void setGeoAreas(long[] geoAreas)
    {
       this.geoAreas = geoAreas;
-   }
-   
-   /**
-    * @param instance the instance to set
-    */
-   public void setInstance(String instance)
-   {
-      this.instance = instance;
-   }
-   
-   /**
-    * @return the instance
-    */
-   public String getInstance()
-   {
-      return instance;
    }
 
    /**

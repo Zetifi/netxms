@@ -52,7 +52,7 @@ public class ServiceCheck
       script = null; 
       objectId = 0;
       dciId = 0;
-      threshold = -1;
+      threshold = 0;
    }
 
    /**

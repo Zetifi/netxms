@@ -96,9 +96,9 @@ public class EditBSCheckDlg extends Dialog
       gd.horizontalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
       thresholdCombo = WidgetHelper.createLabeledCombo(dialogArea, SWT.READ_ONLY, i18n.tr("Status Threashold"), gd);
-      thresholdCombo.add("Default");   
-      for (String status : StatusDisplayInfo.getStatusTexts())
-         thresholdCombo.add(status);   
+      thresholdCombo.add(i18n.tr("Default"));   
+      for (int i = 1; i <= 4; i++)
+         thresholdCombo.add(StatusDisplayInfo.getStatusText(i));   
       
       objectSelector = new ObjectSelector(dialogArea, SWT.NONE, true);
       gd = new GridData();
@@ -129,7 +129,7 @@ public class EditBSCheckDlg extends Dialog
       //Set all values 
       descriptionText.setText(check.getDescription());
       typeCombo.select(check.getCheckType());
-      thresholdCombo.select(check.getThreshold() + 1);
+      thresholdCombo.select(check.getThreshold());
       objectSelector.setObjectId(check.getObjectId());;
       dciSelector.setDciId(check.getObjectId(), check.getDciId());;
       scriptEditor.setText(check.getScript());  

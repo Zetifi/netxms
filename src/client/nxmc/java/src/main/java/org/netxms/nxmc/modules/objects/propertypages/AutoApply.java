@@ -30,6 +30,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.netxms.client.NXCObjectModificationData;
 import org.netxms.client.NXCSession;
+import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.Template;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
@@ -55,9 +56,9 @@ public class AutoApply extends ObjectPropertyPage
 	private String initialApplyFilter;
 	
 
-   public AutoApply(Template object)
+   public AutoApply(AbstractObject object)
    {
-      super("Auto apply", object);
+      super(i18n.tr("Auto apply"), object);
    }
 
    /**
@@ -225,6 +226,7 @@ public class AutoApply extends ObjectPropertyPage
    @Override
    public boolean isVisible()
    {
+      System.out.println(object);
       return object instanceof Template;
    }
    

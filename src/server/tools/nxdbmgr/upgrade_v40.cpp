@@ -69,17 +69,26 @@ static bool BSCommonDeleteObject(uint32_t id)
  */
 static bool H_UpgradeFromV67()
 {
-   CHK_EXEC(CreateConfigParam(_T("BusinessServices.Check.Threshold"),
+   CHK_EXEC(CreateConfigParam(_T("BusinessServices.Check.Threshold.DataCollection"),
          _T("1"),
-         _T("Default threshold for business service checks"),
+         _T("Default threshold for business service DCI checks"),
+         _T(""),
+         'C', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(_T("BusinessServices.Check.Threshold.Objects"),
+         _T("1"),
+         _T("Default threshold for business service objects checks"),
          _T(""),
          'C', true, false, false, false));
 
    static const TCHAR *configBatch =
-      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold','1','Warning')\n")
-      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold','2','Minor')\n")
-      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold','3','Major')\n")
-      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold','4','Critical')\n")
+      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.DataCollection','1','Warning')\n")
+      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.DataCollection','2','Minor')\n")
+      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.DataCollection','3','Major')\n")
+      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.DataCollection','4','Critical')\n")
+      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.Objects','1','Warning')\n")
+      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.Objects','2','Minor')\n")
+      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.Objects','3','Major')\n")
+      _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.Objects','4','Critical')\n")
       _T("<END>");
    CHK_EXEC(SQLBatch(configBatch));
 
@@ -109,7 +118,7 @@ static bool H_UpgradeFromV67()
       _T("ALTER TABLE slm_checks ADD related_dci integer\n")
       _T("ALTER TABLE slm_checks ADD status_threshold integer\n")
       _T("ALTER TABLE slm_checks ADD description varchar(1023)\n")
-      _T("UPDATE slm_checks SET service_id=0,related_object=0,related_dci=0,status_threshold=-1\n") //Threshold is default - from server configuration
+      _T("UPDATE slm_checks SET service_id=0,related_object=0,related_dci=0,status_threshold=0\n") //Threshold is default - from server configuration
       _T("<END>");
    CHK_EXEC(SQLBatch(slmCheckBatch));
    CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("service_id")));
@@ -136,7 +145,7 @@ static bool H_UpgradeFromV67()
          {
             uint32_t linkId = DBGetFieldULong(linkUnderMainContainer, i, 0);
             TCHAR query[1024];
-            _sntprintf(query, 1024, _T("INSERT INTO business_services (service_id,is_protopype,prototype_id,instance,instance_method,instance_data,instance_filter) VALUES (%d,'0',0,'',0,'','')"),
+            _sntprintf(query, 1024, _T("INSERT INTO business_services (service_id,is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter) VALUES (%d,'0',0,'',0,'','')"),
                   linkId);
 
             if (!SQLQuery(query) && !g_ignoreErrors)

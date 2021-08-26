@@ -6541,11 +6541,6 @@ public class NXCSession
          msg.setField(NXCPCodes.VID_GEO_AREAS, data.getGeoAreas());
       }
 
-      if (data.getInstance() != null)
-      {
-         msg.setField(NXCPCodes.VID_INSTANCE, data.getInstance());
-      }
-
       if (data.getInstanceDiscoveryMethod() != null)
       {
          msg.setFieldInt32(NXCPCodes.VID_INSTD_METHOD, data.getInstanceDiscoveryMethod());

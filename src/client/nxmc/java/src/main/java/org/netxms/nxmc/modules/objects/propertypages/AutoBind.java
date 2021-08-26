@@ -60,7 +60,7 @@ public class AutoBind extends ObjectPropertyPage
 	
    public AutoBind(AbstractObject object)
    {
-      super("Object Auto Bind", object);
+      super(i18n.tr("Object Auto Bind"), object);
    }
 
    /**
