@@ -292,7 +292,7 @@ uint32_t SlmCheck::execute()
 	uint32_t oldStatus = m_status;
 	switch (m_type)
 	{
-		case 0: //Object
+		case OBJECT:
 			{
 				shared_ptr<NetObj> obj = FindObjectById(m_relatedObject);
 				if (obj != nullptr)
@@ -302,7 +302,7 @@ uint32_t SlmCheck::execute()
 				}
 			}
 			break;
-		case 1: //Script
+		case SCRIPT:
 			if (m_pCompiledScript != NULL)
 			{
 				NXSL_VariableSystem *pGlobals = NULL;
@@ -344,7 +344,7 @@ uint32_t SlmCheck::execute()
 				m_status = STATUS_UNKNOWN;
 			}
 			break;
-		case 2: //DCI
+		case DCI:
 			{
 				shared_ptr<NetObj> obj = FindObjectById(m_relatedObject);
 				if (obj != nullptr && obj->isDataCollectionTarget())

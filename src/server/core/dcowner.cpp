@@ -949,6 +949,18 @@ StringSet *DataCollectionOwner::getDCIScriptList() const
    return scripts;
 }
 
+IntegerArray<uint32_t> *DataCollectionOwner::getDCIIds()
+{
+   IntegerArray<uint32_t>* arr = new IntegerArray<uint32_t>();
+   readLockDciAccess();
+   for(int i = 0; i < m_dcObjects->size(); i++)
+   {
+      arr->add(m_dcObjects->get(i)->getId());
+   }
+   unlockDciAccess();
+   return arr;
+}
+
 /**
  * Enumerate all DCIs
  */

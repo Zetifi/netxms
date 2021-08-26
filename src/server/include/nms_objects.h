@@ -1392,6 +1392,7 @@ public:
    void sendItemsToClient(ClientSession *pSession, UINT32 dwRqId) const;
    virtual HashSet<uint32_t> *getRelatedEventsList() const;
    StringSet *getDCIScriptList() const;
+   IntegerArray<uint32_t> *getDCIIds();
    bool isDataCollectionSource(UINT32 nodeId) const;
 
    virtual void applyDCIChanges(bool forcedChange);
@@ -4387,6 +4388,7 @@ public:
    uint32_t getRelatedObject() { return m_relatedObject; }
    void setRelatedObject(uint32_t object) { m_relatedObject = object; }
    uint32_t getRelatedDCI() { return m_relatedDCI; }
+   void setRelatedDCI(uint32_t dci) { m_relatedDCI = dci; }
    uint32_t getCurrentTicket() { return m_currentTicket; }
    uint32_t getStatus() { return m_status; }
    void setName( const TCHAR* name ) { _tcslcpy(m_name, name, 1023); }
@@ -4400,9 +4402,9 @@ public:
    bool deleteFromDatabase();
 
    enum {
-      NODE = 0, //TODO: rename to object and dci
+      OBJECT = 0,
       SCRIPT = 1,
-      THRESHOLD = 2
+      DCI = 2
    };
 };
 

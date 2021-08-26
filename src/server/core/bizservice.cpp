@@ -554,9 +554,6 @@ void BusinessService::configurationPoll(PollerInfo *poller, ClientSession *sessi
    //m_pollRequestor = pSession;
    //m_pollRequestId = dwRqId;
 
-   nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): Auto binding SLM checks"), m_name);
-   updateSLMChecks();
-
    sendPollerMsg(_T("Configuration poll finished\r\n"));
    nxlog_debug_tag(DEBUG_TAG, 6, _T("BusinessServiceConfPoll(%s): finished"), m_name);
 
@@ -568,6 +565,7 @@ void BusinessService::objectCheckAutoBinding()
 {
    if (m_autoBindObjectFlag)
    {
+      nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): Auto binding object SLM checks"), m_name);
       for (int i = 0; i < g_idxObjectById.size(); i++)
       {
          shared_ptr<NetObj> object = g_idxObjectById.get(i);
@@ -584,7 +582,7 @@ void BusinessService::objectCheckAutoBinding()
                   uint32_t foundCheckId = 0;
                   for (auto check : m_checks)
                   {
-                     if (check->getType() == SlmCheck::NODE && check->getRelatedObject() == object->getId())
+                     if (check->getType() == SlmCheck::OBJECT && check->getRelatedObject() == object->getId())
                      {
                         foundCheckId = check->getId();
                         break;
@@ -592,6 +590,7 @@ void BusinessService::objectCheckAutoBinding()
                   }
                   if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindObjectFlag)
                   {
+                     nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): object check %ld unbinded"), foundCheckId);
                      deleteCheck(foundCheckId);
                   }
                   if (foundCheckId == 0 && pValue->isTrue())
@@ -604,6 +603,7 @@ void BusinessService::objectCheckAutoBinding()
                      check->setName(checkName);
                      check->generateId();
                      check->saveToDatabase();
+                     nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): object check %s[%ld] binded"), checkName, foundCheckId);
                      NotifyClientsOnSlmCheckUpdate(*this, check);
                   }
                }
@@ -615,27 +615,66 @@ void BusinessService::objectCheckAutoBinding()
 
 void BusinessService::dciCheckAutoBinding()
 {
-   /*if (m_autoBindDCIFlag)
+   if (m_autoBindDCIFlag)
    {
+      nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): Auto binding DCI SLM checks"), m_name);
       for (int i = 0; i < g_idxObjectById.size(); i++)
       {
          shared_ptr<NetObj> object = g_idxObjectById.get(i);
-         if (object->isDataCollectionTarget())
+         if (object != nullptr && object->isDataCollectionTarget())
          {
-            shared_ptr<DataCollectionTarget> target = static_pointer_cast<DataCollectionTarget>(obj);
+            shared_ptr<DataCollectionTarget> target = static_pointer_cast<DataCollectionTarget>(object);
+            IntegerArray<uint32_t> *dciIds = target->getDCIIds();
+            for (int i = 0; i < dciIds->size(); i++)
+            {
+               shared_ptr<DCObject> dci = target->getDCObjectById(dciIds->get(i), 0);
+               if (dci != nullptr)
+               {
+                  m_pCompiledAutobindDCIScript->setGlobalVariable("$object", object->createNXSLObject(m_pCompiledAutobindDCIScript));
+                  if (object->getObjectClass() == OBJECT_NODE)
+                     m_pCompiledAutobindDCIScript->setGlobalVariable("$node", object->createNXSLObject(m_pCompiledAutobindDCIScript));
+                  m_pCompiledAutobindDCIScript->setGlobalVariable("$dci", dci->createNXSLObject(m_pCompiledAutobindDCIScript));
+                  if (m_pCompiledAutobindDCIScript->run(0, nullptr))
+                  {
+                     NXSL_Value *pValue = m_pCompiledAutobindDCIScript->getResult();
+                     if (!pValue->isNull())
+                     {
+                        uint32_t foundCheckId = 0;
+                        for (auto check : m_checks)
+                        {
+                           if (check->getType() == SlmCheck::DCI && check->getRelatedObject() == object->getId() && check->getRelatedDCI() == dci->getId())
+                           {
+                              foundCheckId = check->getId();
+                              break;
+                           }
+                        }
+                        if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindDCIFlag)
+                        {
+                           nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): DCI check %ld unbinded"), foundCheckId);
+                           deleteCheck(foundCheckId);
+                        }
+                        if (foundCheckId == 0 && pValue->isTrue())
+                        {
+                           SlmCheck* check = new SlmCheck(m_id);
+                           m_checks.add(check);
+                           check->setRelatedObject(object->getId());
+                           check->setRelatedDCI(dci->getId());
+                           TCHAR checkName[MAX_OBJECT_NAME];
+                           _sntprintf(checkName, MAX_OBJECT_NAME, _T("%s in %s[%ld] DCI check"), dci->getName(), object->getName(), object->getId());
+                           check->setName(checkName);
+                           check->generateId();
+                           check->saveToDatabase();
+                           nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): DCI check %s[%ld] binded"), checkName, foundCheckId);
+                           NotifyClientsOnSlmCheckUpdate(*this, check);
+                        }
+                     }
+                  }
+               }
+            }
+
          }
-
-      if (m_autoUnbindDCIFlag)
-      {
-         
       }
-   }*/
-}
-
-
-void BusinessService::updateSLMChecks()
-{
-
+   }
 }
 
 /**
