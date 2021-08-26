@@ -4357,11 +4357,6 @@ public:
 class NXCORE_EXPORTABLE SlmCheck
 {
 protected:
-   enum {
-      NODE = 0,
-      SCRIPT = 1,
-      THRESHOLD = 2
-   };
    uint32_t m_status;
    int m_type;
    TCHAR *m_script;
@@ -4389,6 +4384,7 @@ public:
    const TCHAR* getScript() { return m_script; } 
    uint32_t getId() { return m_id; }
    uint32_t getRelatedObject() { return m_relatedObject; }
+   void setRelatedObject(uint32_t object) { m_relatedObject = object; }
    uint32_t getRelatedDCI() { return m_relatedDCI; }
    uint32_t getCurrentTicket() { return m_currentTicket; }
    uint32_t getStatus() { return m_status; }
@@ -4400,6 +4396,12 @@ public:
    void fillMessage(NXCPMessage *msg, uint64_t baseId);
    bool saveToDatabase();
    bool deleteFromDatabase();
+
+   enum {
+      NODE = 0, //TODO: rename to object and dci
+      SCRIPT = 1,
+      THRESHOLD = 2
+   };
 };
 
 
@@ -4436,11 +4438,13 @@ protected:
 
    TCHAR *m_autobindDCIScript;
    NXSL_VM *m_pCompiledAutobindDCIScript;
-   bool m_autounbindDCIFlag;
+   bool m_autoBindDCIFlag;
+   bool m_autoUnbindDCIFlag;
 
    TCHAR *m_autobindObjectScript;
    NXSL_VM *m_pCompiledAutobindObjectScript;
-   bool m_autounbindObjectFlag;
+   bool m_autoBindObjectFlag;
+   bool m_autoUnbindObjectFlag;
 
 public:
    BaseBusinessService(const TCHAR* name);
@@ -4480,6 +4484,9 @@ protected:
    void compileObjectBindingScript();
    virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
 
+   void objectCheckAutoBinding();
+   void dciCheckAutoBinding();
+
 public:
    BusinessService(const TCHAR *name);
    BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance);
@@ -4501,6 +4508,8 @@ public:
    virtual bool readyForStatusPoll() { return true; } //TODO: check conditions
    virtual bool readyForConfigurationPoll() { return true; } //TODO: check conditions
    virtual bool readyForDiscoveryPoll() { return false; }
+
+   virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
 
 };
 

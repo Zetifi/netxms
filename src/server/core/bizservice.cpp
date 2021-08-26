@@ -42,10 +42,12 @@ BaseBusinessService::BaseBusinessService(uint32_t id) : m_checks(10, 10, Ownersh
 	m_lastPollTime = time_t(0);
    m_autobindDCIScript = nullptr;
    m_pCompiledAutobindDCIScript = nullptr;
-   m_autounbindDCIFlag = false;
+   m_autoBindDCIFlag = false;
+   m_autoUnbindDCIFlag = false;
    m_autobindObjectScript = nullptr;
    m_pCompiledAutobindObjectScript = nullptr;
-   m_autounbindObjectFlag = false;
+   m_autoBindObjectFlag = false;
+   m_autoUnbindObjectFlag = false;
 }
 
 /**
@@ -58,10 +60,12 @@ BaseBusinessService::BaseBusinessService(const TCHAR* name) : m_checks(10, 10, O
 	m_lastPollTime = time_t(0);
    m_autobindDCIScript = nullptr;
    m_pCompiledAutobindDCIScript = nullptr;
-   m_autounbindDCIFlag = false;
+   m_autoBindDCIFlag = false;
+   m_autoUnbindDCIFlag = false;
    m_autobindObjectScript = nullptr;
    m_pCompiledAutobindObjectScript = nullptr;
-   m_autounbindObjectFlag = false;
+   m_autoBindObjectFlag = false;
+   m_autoUnbindObjectFlag = false;
 }
 
 /**
@@ -254,7 +258,7 @@ bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
    if (!loadChecksFromDatabase(hdb))
       return false;
 
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT object_bind_filter,object_unbind_flag,dci_bind_filter,dci_unbind_flag char ")
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag char ")
 													_T("FROM auto_bind_target WHERE object_id=?"));
 
 	if (hStmt == nullptr)
@@ -272,10 +276,12 @@ bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 
    MemFree(m_autobindObjectScript);
    m_autobindObjectScript = DBGetField(hResult, 0, 0, nullptr, 0);
-   m_autounbindObjectFlag = DBGetFieldLong(hResult, 0, 1) ? true : false;
+   m_autoBindObjectFlag = DBGetFieldLong(hResult, 0, 1) ? true : false;
+   m_autoUnbindObjectFlag = DBGetFieldLong(hResult, 0, 2) ? true : false;
    MemFree(m_autobindDCIScript);
-   m_autobindDCIScript = DBGetField(hResult, 0, 2, nullptr, 0);
-   m_autounbindDCIFlag = DBGetFieldLong(hResult, 0, 3) ? true : false;
+   m_autobindDCIScript = DBGetField(hResult, 0, 3, nullptr, 0);
+   m_autoBindDCIFlag = DBGetFieldLong(hResult, 0, 4) ? true : false;
+   m_autoUnbindDCIFlag = DBGetFieldLong(hResult, 0, 5) ? true : false;
 
    DBFreeResult(hResult);
    DBFreeStatement(hStmt);
@@ -318,21 +324,23 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
    {
       if (IsDatabaseRecordExist(hdb, _T("auto_bind_target"), _T("object_id"), m_id))
       {
-         hStmt = DBPrepare(hdb, _T("UPDATE auto_bind_target SET object_bind_filter=?,object_bind_flag='1',object_unbind_flag=?,dci_bind_filter=?,dci_bind_flag='1',dci_unbind_flag=? WHERE object_id=?"));
+         hStmt = DBPrepare(hdb, _T("UPDATE auto_bind_target SET object_bind_filter=?,object_bind_flag=?,object_unbind_flag=?,dci_bind_filter=?,dci_bind_flag=?,dci_unbind_flag=? WHERE object_id=?"));
       }
       else
       {
-         hStmt = DBPrepare(hdb, _T("INSERT INTO auto_bind_target (object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag,object_id) VALUES (?,'1',?,?,'1',?,?)"));
+         hStmt = DBPrepare(hdb, _T("INSERT INTO auto_bind_target (object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag,object_id) VALUES (?,?,?,?,?,?,?)"));
       }
 
       if (hStmt != nullptr)
       {
          //lockProperties();
          DBBind(hStmt, 1, DB_SQLTYPE_TEXT, m_autobindObjectScript, DB_BIND_STATIC);
-         DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, (false ? _T("1") :_T("0")), DB_BIND_STATIC);
-         DBBind(hStmt, 3, DB_SQLTYPE_TEXT, m_autobindDCIScript, DB_BIND_STATIC);
-         DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, (false ? _T("1") :_T("0")), DB_BIND_STATIC);
-         DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, m_id);
+         DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, (m_autoBindObjectFlag ? _T("1") :_T("0")), DB_BIND_STATIC);
+         DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, (m_autoUnbindObjectFlag ? _T("1") :_T("0")), DB_BIND_STATIC);
+         DBBind(hStmt, 4, DB_SQLTYPE_TEXT, m_autobindDCIScript, DB_BIND_STATIC);
+         DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, (m_autoBindDCIFlag ? _T("1") :_T("0")), DB_BIND_STATIC);
+         DBBind(hStmt, 6, DB_SQLTYPE_VARCHAR, (m_autoUnbindDCIFlag ? _T("1") :_T("0")), DB_BIND_STATIC);
+         DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, m_id);
 
          success = DBExecute(hStmt);
          DBFreeStatement(hStmt);
@@ -419,13 +427,26 @@ uint32_t BusinessService::modifyFromMessageInternal(NXCPMessage *request)
 
 void BusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
 {
-   msg->setField(VID_AUTOBIND_FLAG, m_autobindObjectScript != nullptr);
-   msg->setField(VID_AUTOUNBIND_FLAG, m_autounbindObjectFlag);
+   msg->setField(VID_AUTOBIND_FLAG, m_autoBindObjectFlag);
+   msg->setField(VID_AUTOUNBIND_FLAG, m_autoUnbindObjectFlag);
    msg->setField(VID_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindObjectScript));
    /*msg->setField(VID_AUTOBIND_FLAG, m_autobindDCIScript != nullptr);
    msg->setField(VID_AUTOUNBIND_FLAG, m_autounbindDCIFlag);
    msg->setField(VID_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindDCIScript));*/
    return AbstractContainer::fillMessageInternal(msg, userId);
+}
+
+bool BusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
+{
+   if (!BaseBusinessService::loadFromDatabase(hdb, id))
+      return false;
+
+   if (m_pCompiledAutobindObjectScript != nullptr)
+   {
+      delete_and_null(m_pCompiledAutobindObjectScript);
+   }
+   compileObjectBindingScript();
+   return true;
 }
 
 /**
@@ -444,12 +465,12 @@ void BusinessService::compileObjectBindingScript()
    m_pCompiledAutobindObjectScript = NXSLCompileAndCreateVM(m_autobindObjectScript, errorMsg, errorMsgLen, new NXSL_ServerEnv);
    if (m_pCompiledAutobindObjectScript != nullptr)
    {
-      m_pCompiledAutobindObjectScript->addConstant("OK", m_pCompiledAutobindObjectScript->createValue((LONG)0));
+      m_pCompiledAutobindObjectScript->addConstant("OK", m_pCompiledAutobindObjectScript->createValue((LONG)0)); //FIXME: do we need this?
       m_pCompiledAutobindObjectScript->addConstant("FAIL", m_pCompiledAutobindObjectScript->createValue((LONG)1));
    }
    else
    {
-      nxlog_write(NXLOG_WARNING, _T("Failed to compile script for service check object %s [%u] (%s)"), m_name, m_id, errorMsg);
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service check object %s [%u] (%s)"), m_name, m_id, errorMsg);
    }
 }
 
@@ -485,8 +506,8 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
       return;
    }
 
-	DbgPrintf(5, _T("Started polling of business service %s [%d]"), m_name, (int)m_id);
-	m_lastPollTime = time(NULL);
+	nxlog_debug_tag(DEBUG_TAG, 5, _T("Started polling of business service %s [%d]"), m_name, (int)m_id);
+	m_lastPollTime = time(nullptr);
 
 	// Loop through the kids and execute their either scripts or thresholds
    readLockChildList();
@@ -504,7 +525,7 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
 	}
 
 	//m_lastPollStatus = m_status;
-	DbgPrintf(5, _T("Finished status polling of business service %s [%d]"), m_name, (int)m_id);
+	nxlog_debug_tag(DEBUG_TAG, 5, _T("Finished status polling of business service %s [%d]"), m_name, (int)m_id);
 	m_busy = false;
    delete poller;
 }
@@ -531,10 +552,13 @@ void BusinessService::configurationPoll(PollerInfo *poller, ClientSession *sessi
       return;
    }
 
+   objectCheckAutoBinding();
+   dciCheckAutoBinding();
+
    //m_pollRequestor = pSession;
    //m_pollRequestId = dwRqId;
 
-   nxlog_debug_tag(DEBUG_TAG, 5, _T("Business service(%s): Auto binding SLM checks"), m_name);
+   nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): Auto binding SLM checks"), m_name);
    updateSLMChecks();
 
    sendPollerMsg(_T("Configuration poll finished\r\n"));
@@ -543,6 +567,67 @@ void BusinessService::configurationPoll(PollerInfo *poller, ClientSession *sessi
    //pollerUnlock();
    delete poller;
 }
+
+void BusinessService::objectCheckAutoBinding()
+{
+   if (m_autoBindObjectFlag)
+   {
+      for (int i = 0; i < g_idxObjectById.size(); i++)
+      {
+         shared_ptr<NetObj> object = g_idxObjectById.get(i);
+         m_pCompiledAutobindObjectScript->setGlobalVariable("$object", object->createNXSLObject(m_pCompiledAutobindObjectScript));
+         if (object->getObjectClass() == OBJECT_NODE)
+            m_pCompiledAutobindObjectScript->setGlobalVariable("$node", object->createNXSLObject(m_pCompiledAutobindObjectScript));
+			if (m_pCompiledAutobindObjectScript->run(0, nullptr))
+         {
+            NXSL_Value *pValue = m_pCompiledAutobindObjectScript->getResult();
+            if (!pValue->isNull())
+            {
+               uint32_t foundCheckId = 0;
+               for (auto check : m_checks)
+               {
+                  if (check->getType() == SlmCheck::NODE && check->getRelatedObject() == object->getId())
+                  {
+                     foundCheckId = check->getId();
+                     break;
+                  }
+               }
+               if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindObjectFlag)
+               {
+                  deleteCheck(foundCheckId);
+               }
+               if (foundCheckId == 0 && pValue->isTrue())
+               {
+                  SlmCheck* check = new SlmCheck(m_id);
+                  m_checks.add(check);
+                  check->setRelatedObject(object->getId());
+                  NotifyClientsOnSlmCheckUpdate(*this, check);
+               }
+            }
+         }
+      }
+   }
+}
+
+void BusinessService::dciCheckAutoBinding()
+{
+   /*if (m_autoBindDCIFlag)
+   {
+      for (int i = 0; i < g_idxObjectById.size(); i++)
+      {
+         shared_ptr<NetObj> object = g_idxObjectById.get(i);
+         if (object->isDataCollectionTarget())
+         {
+            shared_ptr<DataCollectionTarget> target = static_pointer_cast<DataCollectionTarget>(obj);
+         }
+
+      if (m_autoUnbindDCIFlag)
+      {
+         
+      }
+   }*/
+}
+
 
 void BusinessService::updateSLMChecks()
 {
