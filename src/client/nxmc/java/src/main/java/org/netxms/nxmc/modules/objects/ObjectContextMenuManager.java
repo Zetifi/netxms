@@ -268,6 +268,13 @@ public class ObjectContextMenuManager extends MenuManager
          add(new MenuContributionItem(i18n.tr("&Tools"), toolsMenu));
       }
 
+      final Menu pollsMenu = ObjectPollsMenuFactory.createMenu((IStructuredSelection)selectionProvider.getSelection(), getMenu(), null, view.getWindow(), view.getPerspective());
+      if (pollsMenu != null)
+      {
+         add(new Separator());
+         add(new MenuContributionItem(i18n.tr("&Poll"), pollsMenu));
+      }
+
       add(new Separator());
       add(actionProperties);
    }

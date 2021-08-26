@@ -100,11 +100,16 @@ static bool H_UpgradeFromV67()
       _T("ALTER TABLE business_services ADD instance_method integer\n")
       _T("ALTER TABLE business_services ADD instance_data varchar(1023)\n")
       _T("ALTER TABLE business_services ADD instance_filter $SQL:TEXT\n")
-      _T("UPDATE business_services SET instance_method=0,prototype_id=0,is_prototype='0'\n")
+      _T("ALTER TABLE business_services ADD instance_filter $SQL:TEXT\n")
+      _T("ALTER TABLE business_services ADD object_status_threshold integer\n")
+      _T("ALTER TABLE business_services ADD dci_status_threshold integer\n")
+      _T("UPDATE business_services SET instance_method=0,prototype_id=0,is_prototype='0',object_status_threshold=0,dci_status_threshold=0\n")
       _T("<END>");
    CHK_EXEC(SQLBatch(businessServiceBatch));
    CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("business_services"), _T("instance_method")));
    CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("business_services"), _T("prototype_id")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("business_services"), _T("object_status_threshold")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("business_services"), _T("dci_status_threshold")));
 
    //Delete all templates
    CHK_EXEC(SQLQuery(_T("DELETE FROM object_properties WHERE object_id IN (SELECT id FROM slm_checks WHERE is_template=1)")));

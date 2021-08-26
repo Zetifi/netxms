@@ -1980,6 +1980,8 @@ CREATE TABLE business_services
   instance_method integer not null,
   instance_data varchar(1023),
   instance_filter SQL_TEXT,
+  object_status_threshold integer not null,
+  dci_status_threshold integer not null,
   PRIMARY KEY(service_id)
 ) TABLE_TYPE;
 
