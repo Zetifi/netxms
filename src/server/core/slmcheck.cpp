@@ -83,6 +83,10 @@ void SlmCheck::modifyFromMessage(NXCPMessage *request)
    {
       request->getFieldAsString(VID_DESCRIPTION, m_name, 1023);
    }
+	if (request->isFieldExist(VID_THRESHOLD))
+   {
+      m_statusThreshold = request->getFieldAsInt32(VID_THRESHOLD);
+   }
 
 	saveToDatabase();
 }

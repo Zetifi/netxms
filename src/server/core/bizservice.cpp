@@ -50,7 +50,7 @@ BaseBusinessService::BaseBusinessService() : m_checks(10, 10, Ownership::True)
    m_instance = nullptr;
    m_instanceDiscoveryMethod = 0;
    m_instanceDiscoveryData = nullptr;
-   m_instanceDiscoveryScript = nullptr;
+   m_instanceDiscoveryFilter = nullptr;
 }
 
 /**
@@ -71,7 +71,7 @@ BaseBusinessService::BaseBusinessService(const TCHAR* name) : m_checks(10, 10, O
    m_instance = nullptr;
    m_instanceDiscoveryMethod = 0;
    m_instanceDiscoveryData = nullptr;
-   m_instanceDiscoveryScript = nullptr;
+   m_instanceDiscoveryFilter = nullptr;
 }
 
 /**
@@ -279,6 +279,25 @@ uint32_t BaseBusinessService::modifyFromMessageInternal(NXCPMessage *request)
       MemFree(m_autobindDCIScript);
       m_autobindDCIScript = request->getFieldAsString(VID_DCI_AUTOBIND_FILTER);
    }
+   if (request->isFieldExist(VID_INSTANCE))
+   {
+      MemFree(m_instance);
+      m_instance = request->getFieldAsString(VID_INSTANCE);
+   }
+   if (request->isFieldExist(VID_INSTD_METHOD))
+   {
+      m_instanceDiscoveryMethod = request->getFieldAsUInt32(VID_INSTD_METHOD);
+   }
+   if (request->isFieldExist(VID_INSTD_DATA))
+   {
+      MemFree(m_instanceDiscoveryData);
+      m_instanceDiscoveryData = request->getFieldAsString(VID_INSTD_DATA);
+   }
+   if (request->isFieldExist(VID_INSTD_FILTER))
+   {
+      MemFree(m_instanceDiscoveryFilter);
+      m_instanceDiscoveryFilter = request->getFieldAsString(VID_INSTD_FILTER);
+   }
    return super::modifyFromMessageInternal(request);
 }
 
@@ -291,11 +310,10 @@ void BaseBusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
    msg->setField(VID_DCI_AUTOUNBIND_FLAG, m_autoUnbindDCIFlag);
    msg->setField(VID_DCI_AUTOBIND_FILTER, m_autobindDCIScript);
    msg->setField(VID_DCI_AUTOBIND_FLAG, m_autoBindDCIFlag);
-   //msg->setField(VID_BUSINESS_SERVICE_IS_PROTOTYPE, m_prototypeId);
    msg->setField(VID_INSTANCE, m_instance);
    msg->setField(VID_INSTD_METHOD, m_instanceDiscoveryMethod);
    msg->setField(VID_INSTD_DATA, m_instanceDiscoveryData);
-   msg->setField(VID_INSTD_FILTER, m_instanceDiscoveryScript);
+   msg->setField(VID_INSTD_FILTER, m_instanceDiscoveryFilter);
    return super::fillMessageInternal(msg, userId);
 }
 
@@ -359,7 +377,7 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
 		DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, m_instance, DB_BIND_STATIC);
 		DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, m_instanceDiscoveryMethod);
 		DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, m_instanceDiscoveryData, DB_BIND_STATIC);
-		DBBind(hStmt, 6, DB_SQLTYPE_TEXT, m_instanceDiscoveryScript, DB_BIND_STATIC);
+		DBBind(hStmt, 6, DB_SQLTYPE_TEXT, m_instanceDiscoveryFilter, DB_BIND_STATIC);
 		DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, m_id);
 		success = DBExecute(hStmt);
 		DBFreeStatement(hStmt);
@@ -448,17 +466,6 @@ uint32_t BusinessService::modifyFromMessageInternal(NXCPMessage *request)
    return super::modifyFromMessageInternal(request);
 }
 
-/*void BusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
-{
-   msg->setField(VID_AUTOBIND_FLAG, m_autoBindObjectFlag);
-   msg->setField(VID_AUTOUNBIND_FLAG, m_autoUnbindObjectFlag);
-   msg->setField(VID_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindObjectScript));
-   msg->setField(VID_DCI_AUTOBIND_FLAG, m_autoBindDCIFlag);
-   msg->setField(VID_DCI_AUTOUNBIND_FLAG, m_autoUnbindDCIFlag);
-   msg->setField(VID_DCI_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindDCIScript));
-   return super::fillMessageInternal(msg, userId);
-}*/
-
 bool BusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 {
    if (!super::loadFromDatabase(hdb, id))
@@ -490,15 +497,10 @@ void BusinessService::compileObjectBindingScript()
 
 	if (m_pCompiledAutobindObjectScript != nullptr)
 		delete m_pCompiledAutobindObjectScript;
-   m_pCompiledAutobindObjectScript = NXSLCompileAndCreateVM(m_autobindObjectScript, errorMsg, errorMsgLen, new NXSL_ServerEnv);
-   if (m_pCompiledAutobindObjectScript != nullptr)
+   m_pCompiledAutobindObjectScript = NXSLCompile(m_autobindObjectScript, errorMsg, errorMsgLen, nullptr);
+   if (m_pCompiledAutobindObjectScript == nullptr)
    {
-      m_pCompiledAutobindObjectScript->addConstant("OK", m_pCompiledAutobindObjectScript->createValue((LONG)0)); //FIXME: do we need this?
-      m_pCompiledAutobindObjectScript->addConstant("FAIL", m_pCompiledAutobindObjectScript->createValue((LONG)1));
-   }
-   else
-   {
-      nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile object script for service object check %s [%u] (%s)"), m_name, m_id, errorMsg);
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service object check %s [%u] (%s)"), m_name, m_id, errorMsg);
    }
 }
 
@@ -515,13 +517,8 @@ void BusinessService::compileDCIBindingScript()
 
 	if (m_pCompiledAutobindDCIScript != nullptr)
 		delete m_pCompiledAutobindDCIScript;
-   m_pCompiledAutobindDCIScript = NXSLCompileAndCreateVM(m_autobindDCIScript, errorMsg, errorMsgLen, new NXSL_ServerEnv);
-   if (m_pCompiledAutobindObjectScript != nullptr)
-   {
-      m_pCompiledAutobindDCIScript->addConstant("OK", m_pCompiledAutobindDCIScript->createValue((LONG)0)); //FIXME: do we need this?
-      m_pCompiledAutobindDCIScript->addConstant("FAIL", m_pCompiledAutobindDCIScript->createValue((LONG)1));
-   }
-   else
+   m_pCompiledAutobindDCIScript = NXSLCompile(m_autobindDCIScript, errorMsg, errorMsgLen, nullptr);
+   if (m_pCompiledAutobindObjectScript == nullptr)
    {
       nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service DCI check %s [%u] (%s)"), m_name, m_id, errorMsg);
    }
@@ -620,48 +617,53 @@ void BusinessService::objectCheckAutoBinding()
 {
    if (m_autoBindObjectFlag)
    {
-      nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): Auto binding object SLM checks"), m_name);
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): Auto binding object SLM checks"), m_name);
       for (int i = 0; i < g_idxObjectById.size(); i++)
       {
          shared_ptr<NetObj> object = g_idxObjectById.get(i);
          if (object != nullptr)
          {
-            m_pCompiledAutobindObjectScript->setGlobalVariable("$object", object->createNXSLObject(m_pCompiledAutobindObjectScript));
-            if (object->getObjectClass() == OBJECT_NODE)
-               m_pCompiledAutobindObjectScript->setGlobalVariable("$node", object->createNXSLObject(m_pCompiledAutobindObjectScript));
-            if (m_pCompiledAutobindObjectScript->run(0, nullptr))
+            NXSL_VM *filter = filter = CreateServerScriptVM(m_pCompiledAutobindObjectScript, object);
+            if (filter != nullptr)
             {
-               NXSL_Value *pValue = m_pCompiledAutobindObjectScript->getResult();
-               if (!pValue->isNull())
+               filter->setGlobalVariable("$object", object->createNXSLObject(filter));
+               if (object->getObjectClass() == OBJECT_NODE)
+                  filter->setGlobalVariable("$node", object->createNXSLObject(filter));
+               if (filter->run(0, nullptr))
                {
-                  uint32_t foundCheckId = 0;
-                  for (auto check : m_checks)
+                  NXSL_Value *pValue = filter->getResult();
+                  if (!pValue->isNull())
                   {
-                     if (check->getType() == SlmCheck::OBJECT && check->getRelatedObject() == object->getId())
+                     uint32_t foundCheckId = 0;
+                     for (auto check : m_checks)
                      {
-                        foundCheckId = check->getId();
-                        break;
+                        if (check->getType() == SlmCheck::OBJECT && check->getRelatedObject() == object->getId())
+                        {
+                           foundCheckId = check->getId();
+                           break;
+                        }
+                     }
+                     if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindObjectFlag)
+                     {
+                        nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): object check %ld unbinded"), foundCheckId);
+                        deleteCheck(foundCheckId);
+                     }
+                     if (foundCheckId == 0 && pValue->isTrue())
+                     {
+                        SlmCheck* check = new SlmCheck(m_id);
+                        m_checks.add(check);
+                        check->setRelatedObject(object->getId());
+                        TCHAR checkName[MAX_OBJECT_NAME];
+                        _sntprintf(checkName, MAX_OBJECT_NAME, _T("%s[%ld] check"), object->getName(), object->getId());
+                        check->setName(checkName);
+                        check->generateId();
+                        check->saveToDatabase();
+                        nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): object check %s[%ld] binded"), checkName, foundCheckId);
+                        NotifyClientsOnSlmCheckUpdate(*this, check);
                      }
                   }
-                  if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindObjectFlag)
-                  {
-                     nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): object check %ld unbinded"), foundCheckId);
-                     deleteCheck(foundCheckId);
-                  }
-                  if (foundCheckId == 0 && pValue->isTrue())
-                  {
-                     SlmCheck* check = new SlmCheck(m_id);
-                     m_checks.add(check);
-                     check->setRelatedObject(object->getId());
-                     TCHAR checkName[MAX_OBJECT_NAME];
-                     _sntprintf(checkName, MAX_OBJECT_NAME, _T("%s[%ld] check"), object->getName(), object->getId());
-                     check->setName(checkName);
-                     check->generateId();
-                     check->saveToDatabase();
-                     nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): object check %s[%ld] binded"), checkName, foundCheckId);
-                     NotifyClientsOnSlmCheckUpdate(*this, check);
-                  }
                }
+               delete filter;
             }
          }
       }
@@ -672,7 +674,7 @@ void BusinessService::dciCheckAutoBinding()
 {
    if (m_autoBindDCIFlag)
    {
-      nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): Auto binding DCI SLM checks"), m_name);
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): Auto binding DCI SLM checks"), m_name);
       for (int i = 0; i < g_idxObjectById.size(); i++)
       {
          shared_ptr<NetObj> object = g_idxObjectById.get(i);
@@ -685,44 +687,49 @@ void BusinessService::dciCheckAutoBinding()
                shared_ptr<DCObject> dci = target->getDCObjectById(dciIds->get(i), 0);
                if (dci != nullptr)
                {
-                  m_pCompiledAutobindDCIScript->setGlobalVariable("$object", object->createNXSLObject(m_pCompiledAutobindDCIScript));
-                  if (object->getObjectClass() == OBJECT_NODE)
-                     m_pCompiledAutobindDCIScript->setGlobalVariable("$node", object->createNXSLObject(m_pCompiledAutobindDCIScript));
-                  m_pCompiledAutobindDCIScript->setGlobalVariable("$dci", dci->createNXSLObject(m_pCompiledAutobindDCIScript));
-                  if (m_pCompiledAutobindDCIScript->run(0, nullptr))
+                  NXSL_VM *filter = filter = CreateServerScriptVM(m_pCompiledAutobindObjectScript, object);
+                  if (filter != nullptr)
                   {
-                     NXSL_Value *pValue = m_pCompiledAutobindDCIScript->getResult();
-                     if (!pValue->isNull())
+                     filter->setGlobalVariable("$object", object->createNXSLObject(filter));
+                     if (object->getObjectClass() == OBJECT_NODE)
+                        filter->setGlobalVariable("$node", object->createNXSLObject(filter));
+                     filter->setGlobalVariable("$dci", dci->createNXSLObject(filter));
+                     if (filter->run(0, nullptr))
                      {
-                        uint32_t foundCheckId = 0;
-                        for (auto check : m_checks)
+                        NXSL_Value *pValue = filter->getResult();
+                        if (!pValue->isNull())
                         {
-                           if (check->getType() == SlmCheck::DCI && check->getRelatedObject() == object->getId() && check->getRelatedDCI() == dci->getId())
+                           uint32_t foundCheckId = 0;
+                           for (auto check : m_checks)
                            {
-                              foundCheckId = check->getId();
-                              break;
+                              if (check->getType() == SlmCheck::DCI && check->getRelatedObject() == object->getId() && check->getRelatedDCI() == dci->getId())
+                              {
+                                 foundCheckId = check->getId();
+                                 break;
+                              }
+                           }
+                           if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindDCIFlag)
+                           {
+                              nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): DCI check %ld unbinded"), foundCheckId);
+                              deleteCheck(foundCheckId);
+                           }
+                           if (foundCheckId == 0 && pValue->isTrue())
+                           {
+                              SlmCheck* check = new SlmCheck(m_id);
+                              m_checks.add(check);
+                              check->setRelatedObject(object->getId());
+                              check->setRelatedDCI(dci->getId());
+                              TCHAR checkName[MAX_OBJECT_NAME];
+                              _sntprintf(checkName, MAX_OBJECT_NAME, _T("%s in %s[%ld] DCI check"), dci->getName(), object->getName(), object->getId());
+                              check->setName(checkName);
+                              check->generateId();
+                              check->saveToDatabase();
+                              nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): DCI check %s[%ld] binded"), checkName, foundCheckId);
+                              NotifyClientsOnSlmCheckUpdate(*this, check);
                            }
                         }
-                        if (foundCheckId != 0 && pValue->isFalse() && m_autoUnbindDCIFlag)
-                        {
-                           nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): DCI check %ld unbinded"), foundCheckId);
-                           deleteCheck(foundCheckId);
-                        }
-                        if (foundCheckId == 0 && pValue->isTrue())
-                        {
-                           SlmCheck* check = new SlmCheck(m_id);
-                           m_checks.add(check);
-                           check->setRelatedObject(object->getId());
-                           check->setRelatedDCI(dci->getId());
-                           TCHAR checkName[MAX_OBJECT_NAME];
-                           _sntprintf(checkName, MAX_OBJECT_NAME, _T("%s in %s[%ld] DCI check"), dci->getName(), object->getName(), object->getId());
-                           check->setName(checkName);
-                           check->generateId();
-                           check->saveToDatabase();
-                           nxlog_debug_tag(DEBUG_TAG, 6, _T("Business service(%s): DCI check %s[%ld] binded"), checkName, foundCheckId);
-                           NotifyClientsOnSlmCheckUpdate(*this, check);
-                        }
                      }
+                     delete filter;
                   }
                }
             }
@@ -886,13 +893,8 @@ void BusinessServicePrototype::compileInstanceDiscoveryScript()
 
 	if (m_pCompiledInstanceDiscoveryScript != nullptr)
 		delete m_pCompiledInstanceDiscoveryScript;
-   m_pCompiledInstanceDiscoveryScript = NXSLCompileAndCreateVM(m_instanceDiscoveryData, errorMsg, errorMsgLen, new NXSL_ServerEnv);
+   m_pCompiledInstanceDiscoveryScript = NXSLCompile(m_instanceDiscoveryData, errorMsg, errorMsgLen, nullptr);
    if (m_pCompiledInstanceDiscoveryScript != nullptr)
-   {
-      m_pCompiledInstanceDiscoveryScript->addConstant("OK", m_pCompiledInstanceDiscoveryScript->createValue((LONG)0)); //FIXME: do we need this?
-      m_pCompiledInstanceDiscoveryScript->addConstant("FAIL", m_pCompiledInstanceDiscoveryScript->createValue((LONG)1));
-   }
-   else
    {
       nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service instance discovery %s [%u] (%s)"), m_name, m_id, errorMsg);
    }

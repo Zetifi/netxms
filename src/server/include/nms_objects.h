@@ -4450,7 +4450,7 @@ protected:
    TCHAR *m_instance;
    uint32_t m_instanceDiscoveryMethod;
    TCHAR* m_instanceDiscoveryData;
-   TCHAR* m_instanceDiscoveryScript;
+   TCHAR* m_instanceDiscoveryFilter;
 
    virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
    virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
@@ -4482,8 +4482,8 @@ class NXCORE_EXPORTABLE BusinessService : public BaseBusinessService
 protected:
    PollState m_statusPollState;
    PollState m_configurationPollState;
-   NXSL_VM *m_pCompiledAutobindDCIScript;
-   NXSL_VM *m_pCompiledAutobindObjectScript;
+   NXSL_Program *m_pCompiledAutobindDCIScript;
+   NXSL_Program *m_pCompiledAutobindObjectScript;
 
    void updateSLMChecks();
    //uint32_t m_lastPollStatus;
@@ -4531,7 +4531,7 @@ class NXCORE_EXPORTABLE BusinessServicePrototype : public BaseBusinessService
 {
    typedef BaseBusinessService super;
 protected:
-   NXSL_VM *m_pCompiledInstanceDiscoveryScript;
+   NXSL_Program *m_pCompiledInstanceDiscoveryScript;
    PollState m_discoveryPollState;
    //uint32_t m_lastPollStatus;
 
