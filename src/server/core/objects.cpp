@@ -2371,7 +2371,8 @@ bool IsValidParentClass(int childClass, int parentClass)
             return true;
          break;
 		case OBJECT_BUSINESS_SERVICE_ROOT:
-			if (childClass == OBJECT_BUSINESS_SERVICE)
+			if (childClass == OBJECT_BUSINESS_SERVICE ||
+             childClass == OBJECT_BUSINESS_SERVICE_PROTOTYPE)
             return true;
          break;
 		case OBJECT_BUSINESS_SERVICE:

@@ -4441,18 +4441,23 @@ protected:
    time_t m_lastPollTime;
 
    TCHAR *m_autobindDCIScript;
-   NXSL_VM *m_pCompiledAutobindDCIScript;
    bool m_autoBindDCIFlag;
    bool m_autoUnbindDCIFlag;
-
    TCHAR *m_autobindObjectScript;
-   NXSL_VM *m_pCompiledAutobindObjectScript;
    bool m_autoBindObjectFlag;
    bool m_autoUnbindObjectFlag;
+   uint32_t m_prototypeId;
+   TCHAR *m_instance;
+   uint32_t m_instanceDiscoveryMethod;
+   TCHAR* m_instanceDiscoveryData;
+   TCHAR* m_instanceDiscoveryScript;
+
+   virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
+   virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
 
 public:
    BaseBusinessService(const TCHAR* name);
-   BaseBusinessService(uint32_t id);
+   BaseBusinessService();
    ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
    void deleteCheck(uint32_t checkId);
    virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
@@ -4473,19 +4478,21 @@ public:
  */
 class NXCORE_EXPORTABLE BusinessService : public BaseBusinessService
 {
+   typedef BaseBusinessService super;
 protected:
-   uint32_t m_prototypeId;
-   TCHAR m_instance[1024];
    PollState m_statusPollState;
    PollState m_configurationPollState;
+   NXSL_VM *m_pCompiledAutobindDCIScript;
+   NXSL_VM *m_pCompiledAutobindObjectScript;
 
    void updateSLMChecks();
    //uint32_t m_lastPollStatus;
 
    /*virtual void prepareForDeletion() override;*/
 
-   virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
+   //virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
    void compileObjectBindingScript();
+   void compileDCIBindingScript();
    virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
 
    void objectCheckAutoBinding();
@@ -4493,7 +4500,7 @@ protected:
 
 public:
    BusinessService(const TCHAR *name);
-   BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance);
+   BusinessService();
    virtual ~BusinessService();
 
    virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; }
@@ -4522,9 +4529,9 @@ public:
  */
 class NXCORE_EXPORTABLE BusinessServicePrototype : public BaseBusinessService
 {
+   typedef BaseBusinessService super;
 protected:
-   uint32_t m_instanceDiscoveryMethod;
-   TCHAR m_instanceDiscoveryData[1024];
+   NXSL_VM *m_pCompiledInstanceDiscoveryScript;
    PollState m_discoveryPollState;
    //uint32_t m_lastPollStatus;
 
@@ -4532,16 +4539,20 @@ protected:
 
    virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
    virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
+
+   void compileInstanceDiscoveryScript();
 public:
    BusinessServicePrototype(const TCHAR *name, uint32_t method);
-   BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData);
+   BusinessServicePrototype();
    virtual ~BusinessServicePrototype();
 
    virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE_PROTOTYPE; }
 
-   //virtual bool loadFromDatabase(DB_HANDLE hdb);
+   virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
    /*virtual bool saveToDatabase(DB_HANDLE hdb) override;
    virtual bool deleteFromDatabase(DB_HANDLE hdb) override;*/
+
+   
 
    void startForcedDiscoveryPoll() { m_discoveryPollState.manualStart(); }
    void instanceDiscoveryPollWorkerEntry(PollerInfo *poller) { instanceDiscoveryPoll(poller, nullptr, 0); }

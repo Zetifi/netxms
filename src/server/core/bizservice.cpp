@@ -34,20 +34,23 @@
 /**
  * Service default constructor
  */
-BaseBusinessService::BaseBusinessService(uint32_t id) : m_checks(10, 10, Ownership::True)
+BaseBusinessService::BaseBusinessService() : m_checks(10, 10, Ownership::True)
 {
-   m_id = id;
+   m_id = 0;
    m_busy = false;
    m_pollingDisabled = false;
 	m_lastPollTime = time_t(0);
    m_autobindDCIScript = nullptr;
-   m_pCompiledAutobindDCIScript = nullptr;
    m_autoBindDCIFlag = false;
    m_autoUnbindDCIFlag = false;
    m_autobindObjectScript = nullptr;
-   m_pCompiledAutobindObjectScript = nullptr;
    m_autoBindObjectFlag = false;
    m_autoUnbindObjectFlag = false;
+   m_prototypeId = 0;
+   m_instance = nullptr;
+   m_instanceDiscoveryMethod = 0;
+   m_instanceDiscoveryData = nullptr;
+   m_instanceDiscoveryScript = nullptr;
 }
 
 /**
@@ -59,13 +62,16 @@ BaseBusinessService::BaseBusinessService(const TCHAR* name) : m_checks(10, 10, O
    m_pollingDisabled = false;
 	m_lastPollTime = time_t(0);
    m_autobindDCIScript = nullptr;
-   m_pCompiledAutobindDCIScript = nullptr;
    m_autoBindDCIFlag = false;
    m_autoUnbindDCIFlag = false;
    m_autobindObjectScript = nullptr;
-   m_pCompiledAutobindObjectScript = nullptr;
    m_autoBindObjectFlag = false;
    m_autoUnbindObjectFlag = false;
+   m_prototypeId = 0;
+   m_instance = nullptr;
+   m_instanceDiscoveryMethod = 0;
+   m_instanceDiscoveryData = nullptr;
+   m_instanceDiscoveryScript = nullptr;
 }
 
 /**
@@ -138,7 +144,6 @@ void BaseBusinessService::deleteCheckFromDatabase(uint32_t checkId)
 
 BaseBusinessService* BaseBusinessService::createBusinessService(const TCHAR* name, int objectClass, NXCPMessage *request)
 {
-
    BaseBusinessService* service = nullptr;
    if(objectClass == OBJECT_BUSINESS_SERVICE_PROTOTYPE)
    {
@@ -176,7 +181,7 @@ BaseBusinessService* BaseBusinessService::createBusinessService(const TCHAR* nam
 BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, uint32_t id)
 {
    BaseBusinessService* service = nullptr;
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT prototype_id,instance,instance_method,instance_data,instance_filter ")
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT is_prototype ")
 													_T("FROM business_services WHERE service_id=?"));
 	if (hStmt == NULL)
 	{
@@ -200,20 +205,15 @@ BaseBusinessService* BaseBusinessService::createBusinessService(DB_HANDLE hdb, u
 		return service;
 	}
 
-   TCHAR instance[1024];
-   TCHAR instanceDiscoveryData[1024];
-   uint32_t prototypeId = DBGetFieldULong(hResult, 0, 0);
-	DBGetField(hResult, 0, 1, instance, 1024);
-   uint32_t instanceDiscoveryMethod = DBGetFieldULong(hResult, 0, 2);
-	DBGetField(hResult, 0, 3, instanceDiscoveryData, 1024);
+   bool isPrototype = (bool)DBGetFieldULong(hResult, 0, 0);
 
-   if(instanceDiscoveryMethod != 0)
+   if(isPrototype)
    {
-      service = new BusinessServicePrototype(id, instanceDiscoveryMethod, instanceDiscoveryData);
+      service = new BusinessServicePrototype();
    }
    else
    {
-      service = new BusinessService(id, prototypeId, instance);
+      service = new BusinessService();
    }
 
 	DBFreeResult(hResult);
@@ -251,6 +251,54 @@ void BaseBusinessService::modifyCheckFromMessage(NXCPMessage *request)
    NotifyClientsOnSlmCheckUpdate(*this, check);
 }
 
+uint32_t BaseBusinessService::modifyFromMessageInternal(NXCPMessage *request)
+{
+   if (request->isFieldExist(VID_AUTOBIND_FLAG))
+   {
+      m_autoBindObjectFlag = request->getFieldAsBoolean(VID_AUTOBIND_FLAG);
+   }
+   if (request->isFieldExist(VID_AUTOUNBIND_FLAG))
+   {
+      m_autoUnbindObjectFlag = request->getFieldAsBoolean(VID_AUTOUNBIND_FLAG);
+   }
+   if (request->isFieldExist(VID_AUTOBIND_FILTER))
+   {
+      MemFree(m_autobindObjectScript);
+      m_autobindObjectScript = request->getFieldAsString(VID_AUTOBIND_FILTER);
+   }
+   if (request->isFieldExist(VID_DCI_AUTOBIND_FLAG))
+   {
+      m_autoBindDCIFlag = request->getFieldAsBoolean(VID_DCI_AUTOBIND_FLAG);
+   }
+   if (request->isFieldExist(VID_DCI_AUTOUNBIND_FLAG))
+   {
+      m_autoUnbindDCIFlag = request->getFieldAsBoolean(VID_DCI_AUTOUNBIND_FLAG);
+   }
+   if (request->isFieldExist(VID_DCI_AUTOBIND_FILTER))
+   {
+      MemFree(m_autobindDCIScript);
+      m_autobindDCIScript = request->getFieldAsString(VID_DCI_AUTOBIND_FILTER);
+   }
+   return super::modifyFromMessageInternal(request);
+}
+
+void BaseBusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
+{
+   msg->setField(VID_AUTOBIND_FLAG, m_autoBindObjectFlag);
+   msg->setField(VID_AUTOUNBIND_FLAG, m_autoUnbindObjectFlag);
+   msg->setField(VID_AUTOBIND_FILTER, m_autobindObjectScript);
+   msg->setField(VID_DCI_AUTOBIND_FLAG, m_autoBindDCIFlag);
+   msg->setField(VID_DCI_AUTOUNBIND_FLAG, m_autoUnbindDCIFlag);
+   msg->setField(VID_DCI_AUTOBIND_FILTER, m_autobindDCIScript);
+   msg->setField(VID_DCI_AUTOBIND_FLAG, m_autoBindDCIFlag);
+   //msg->setField(VID_BUSINESS_SERVICE_IS_PROTOTYPE, m_prototypeId);
+   msg->setField(VID_INSTANCE, m_instance);
+   msg->setField(VID_INSTD_METHOD, m_instanceDiscoveryMethod);
+   msg->setField(VID_INSTD_DATA, m_instanceDiscoveryData);
+   msg->setField(VID_INSTD_FILTER, m_instanceDiscoveryScript);
+   return super::fillMessageInternal(msg, userId);
+}
+
 bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 {
    if (!super::loadFromDatabase(hdb, id))
@@ -258,7 +306,7 @@ bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
    if (!loadChecksFromDatabase(hdb))
       return false;
 
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag char ")
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag ")
 													_T("FROM auto_bind_target WHERE object_id=?"));
 
 	if (hStmt == nullptr)
@@ -293,7 +341,6 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
 {
    if (!super::saveToDatabase(hdb))
       return  false;
-
    DB_STATEMENT hStmt;
 	if (IsDatabaseRecordExist(hdb, _T("business_services"), _T("service_id"), m_id))
 	{
@@ -303,23 +350,21 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
 	{
 		hStmt = DBPrepare(hdb, _T("INSERT INTO business_services (is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter,service_id) VALUES (?,?,?,?,?,?,?)"));
 	}
-
    bool success = false;
 	if (hStmt != nullptr)
 	{
 		//lockProperties();
-		DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, (false ? _T("1") :_T("0")), DB_BIND_STATIC);
-		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, 0);
-		DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, _T(""), DB_BIND_STATIC);
-		DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, 0);
-		DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, _T(""), DB_BIND_STATIC);
-		DBBind(hStmt, 6, DB_SQLTYPE_TEXT, _T(""), DB_BIND_STATIC);
+		DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, getObjectClass() == OBJECT_BUSINESS_SERVICE_PROTOTYPE ? _T("1") :_T("0"), DB_BIND_STATIC);
+		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_prototypeId);
+		DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, m_instance, DB_BIND_STATIC);
+		DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, m_instanceDiscoveryMethod);
+		DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, m_instanceDiscoveryData, DB_BIND_STATIC);
+		DBBind(hStmt, 6, DB_SQLTYPE_TEXT, m_instanceDiscoveryScript, DB_BIND_STATIC);
 		DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, m_id);
 		success = DBExecute(hStmt);
 		DBFreeStatement(hStmt);
 		//unlockProperties();
 	}
-
    if (success)
    {
       if (IsDatabaseRecordExist(hdb, _T("auto_bind_target"), _T("object_id"), m_id))
@@ -330,7 +375,6 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
       {
          hStmt = DBPrepare(hdb, _T("INSERT INTO auto_bind_target (object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag,object_id) VALUES (?,?,?,?,?,?,?)"));
       }
-
       if (hStmt != nullptr)
       {
          //lockProperties();
@@ -351,7 +395,6 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
          success = false;
       }
    }
-
    return success;
 }
 
@@ -367,20 +410,13 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
 /**
  * Constructor for new service object
  */
-BusinessService::BusinessService(uint32_t id, uint32_t prototypeId, const TCHAR *instance) : BaseBusinessService(id), m_statusPollState(_T("status")), m_configurationPollState(_T("configuration"))
+BusinessService::BusinessService() : m_statusPollState(_T("status")), m_configurationPollState(_T("configuration"))
 {
 	/*
 	m_lastPollStatus = STATUS_UNKNOWN;*/
 	//_tcslcpy(m_name, name, MAX_OBJECT_NAME);
-   m_prototypeId = prototypeId;
-   if (instance != nullptr)
-   {
-      _tcsncpy(m_instance, instance, 1023);
-   }
-   else
-   {
-      m_instance[0] = 0;
-   }
+   m_pCompiledAutobindDCIScript = nullptr;
+   m_pCompiledAutobindObjectScript = nullptr;
 }
 
 /**
@@ -391,8 +427,8 @@ BusinessService::BusinessService(const TCHAR *name) : BaseBusinessService(name),
 	/*
 	m_lastPollStatus = STATUS_UNKNOWN;*/
 	//_tcslcpy(m_name, name, MAX_OBJECT_NAME);
-   m_prototypeId = 0;
-   m_instance[0] = 0;
+   m_pCompiledAutobindDCIScript = nullptr;
+   m_pCompiledAutobindObjectScript = nullptr;
 }
 
 /**
@@ -404,24 +440,15 @@ BusinessService::~BusinessService()
 
 uint32_t BusinessService::modifyFromMessageInternal(NXCPMessage *request)
 {
-   if (request->isFieldExist(VID_AUTOBIND_FLAG))
-   {
-      m_autoBindObjectFlag = request->getFieldAsBoolean(VID_AUTOBIND_FLAG);
-   }
-   if (request->isFieldExist(VID_AUTOUNBIND_FLAG))
-   {
-      m_autoUnbindObjectFlag = request->getFieldAsBoolean(VID_AUTOUNBIND_FLAG);
-   }
-   if (request->isFieldExist(VID_AUTOBIND_FILTER))
-   {
-      MemFree(m_autobindObjectScript);
-      m_autobindObjectScript = request->getFieldAsString(VID_AUTOBIND_FILTER);
-		compileObjectBindingScript();
-   }
-   return AbstractContainer::modifyFromMessageInternal(request);
+   super::modifyFromMessageInternal(request);
+
+
+   compileObjectBindingScript();
+   compileDCIBindingScript();
+   return super::modifyFromMessageInternal(request);
 }
 
-void BusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
+/*void BusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
 {
    msg->setField(VID_AUTOBIND_FLAG, m_autoBindObjectFlag);
    msg->setField(VID_AUTOUNBIND_FLAG, m_autoUnbindObjectFlag);
@@ -429,12 +456,12 @@ void BusinessService::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
    msg->setField(VID_DCI_AUTOBIND_FLAG, m_autoBindDCIFlag);
    msg->setField(VID_DCI_AUTOUNBIND_FLAG, m_autoUnbindDCIFlag);
    msg->setField(VID_DCI_AUTOBIND_FILTER, CHECK_NULL_EX(m_autobindDCIScript));
-   return AbstractContainer::fillMessageInternal(msg, userId);
-}
+   return super::fillMessageInternal(msg, userId);
+}*/
 
 bool BusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 {
-   if (!BaseBusinessService::loadFromDatabase(hdb, id))
+   if (!super::loadFromDatabase(hdb, id))
       return false;
 
    if (m_pCompiledAutobindObjectScript != nullptr)
@@ -442,11 +469,16 @@ bool BusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
       delete_and_null(m_pCompiledAutobindObjectScript);
    }
    compileObjectBindingScript();
+   if (m_pCompiledAutobindDCIScript != nullptr)
+   {
+      delete_and_null(m_pCompiledAutobindDCIScript);
+   }
+   compileObjectBindingScript();
    return true;
 }
 
 /**
- * Compile script if there is one
+ * Compile object script if there is one
  */
 void BusinessService::compileObjectBindingScript()
 {
@@ -466,11 +498,34 @@ void BusinessService::compileObjectBindingScript()
    }
    else
    {
-      nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service check object %s [%u] (%s)"), m_name, m_id, errorMsg);
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile object script for service object check %s [%u] (%s)"), m_name, m_id, errorMsg);
    }
 }
 
+/**
+ * Compile DCI script if there is one
+ */
+void BusinessService::compileDCIBindingScript()
+{
+	if (m_autobindDCIScript == nullptr)
+	   return;
 
+   const int errorMsgLen = 512;
+   TCHAR errorMsg[errorMsgLen];
+
+	if (m_pCompiledAutobindDCIScript != nullptr)
+		delete m_pCompiledAutobindDCIScript;
+   m_pCompiledAutobindDCIScript = NXSLCompileAndCreateVM(m_autobindDCIScript, errorMsg, errorMsgLen, new NXSL_ServerEnv);
+   if (m_pCompiledAutobindObjectScript != nullptr)
+   {
+      m_pCompiledAutobindDCIScript->addConstant("OK", m_pCompiledAutobindDCIScript->createValue((LONG)0)); //FIXME: do we need this?
+      m_pCompiledAutobindDCIScript->addConstant("FAIL", m_pCompiledAutobindDCIScript->createValue((LONG)1));
+   }
+   else
+   {
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service DCI check %s [%u] (%s)"), m_name, m_id, errorMsg);
+   }
+}
 
 /**
  * Check if service is ready for poll
@@ -766,17 +821,11 @@ uint32_t DeleteCheck(uint32_t serviceId, uint32_t checkId)
 /**
  * Service prototype constructor
  */
-BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanceDiscoveryMethod, const TCHAR *instanceDiscoveryData) : BaseBusinessService(id), m_discoveryPollState(_T("discovery"))
+BusinessServicePrototype::BusinessServicePrototype() : m_discoveryPollState(_T("discovery"))
 {
-   m_instanceDiscoveryMethod = instanceDiscoveryMethod;
-   if (instanceDiscoveryData != nullptr)
-   {
-      _tcsncpy(m_instanceDiscoveryData, instanceDiscoveryData, 1023);
-   }
-   else
-   {
-      m_instanceDiscoveryData[0] = 0;
-   }
+   m_instanceDiscoveryMethod = 0;
+   m_instanceDiscoveryData = nullptr;
+   m_pCompiledInstanceDiscoveryScript = nullptr;
 }
 
 /**
@@ -785,7 +834,8 @@ BusinessServicePrototype::BusinessServicePrototype(uint32_t id, uint32_t instanc
 BusinessServicePrototype::BusinessServicePrototype(const TCHAR *name, uint32_t instanceDiscoveryMethod) : BaseBusinessService(name), m_discoveryPollState(_T("discovery"))
 {
    m_instanceDiscoveryMethod = instanceDiscoveryMethod;
-   m_instanceDiscoveryData[0] = 0;
+   m_instanceDiscoveryData = nullptr;
+   m_pCompiledInstanceDiscoveryScript = nullptr;
 }
 
 /**
@@ -795,14 +845,64 @@ BusinessServicePrototype::~BusinessServicePrototype()
 {
 }
 
-uint32_t BusinessServicePrototype::modifyFromMessageInternal(NXCPMessage *pRequest)
+bool BusinessServicePrototype::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 {
-   return AbstractContainer::modifyFromMessageInternal(pRequest);
+   if (!super::loadFromDatabase(hdb, id))
+      return false;
+
+   if (m_pCompiledInstanceDiscoveryScript != nullptr)
+   {
+      delete_and_null(m_pCompiledInstanceDiscoveryScript);
+   }
+   compileInstanceDiscoveryScript();
+   return true;
 }
 
-void BusinessServicePrototype::fillMessageInternal(NXCPMessage *pMsg, uint32_t userId)
+uint32_t BusinessServicePrototype::modifyFromMessageInternal(NXCPMessage *request)
 {
-   AbstractContainer::fillMessageInternal(pMsg, userId);
+   if (request->isFieldExist(VID_INSTD_METHOD))
+   {
+      m_instanceDiscoveryMethod = request->getFieldAsUInt32(VID_INSTD_METHOD);
+   }
+   if (request->isFieldExist(VID_INSTD_DATA))
+   {
+      MemFree(m_instanceDiscoveryData);
+      m_instanceDiscoveryData = request->getFieldAsString(VID_INSTD_DATA);
+		compileInstanceDiscoveryScript();
+   }
+   return super::modifyFromMessageInternal(request);
+}
+
+/**
+ * Compile object script if there is one
+ */
+void BusinessServicePrototype::compileInstanceDiscoveryScript()
+{
+	if (m_instanceDiscoveryData == nullptr)
+	   return;
+
+   const int errorMsgLen = 512;
+   TCHAR errorMsg[errorMsgLen];
+
+	if (m_pCompiledInstanceDiscoveryScript != nullptr)
+		delete m_pCompiledInstanceDiscoveryScript;
+   m_pCompiledInstanceDiscoveryScript = NXSLCompileAndCreateVM(m_instanceDiscoveryData, errorMsg, errorMsgLen, new NXSL_ServerEnv);
+   if (m_pCompiledInstanceDiscoveryScript != nullptr)
+   {
+      m_pCompiledInstanceDiscoveryScript->addConstant("OK", m_pCompiledInstanceDiscoveryScript->createValue((LONG)0)); //FIXME: do we need this?
+      m_pCompiledInstanceDiscoveryScript->addConstant("FAIL", m_pCompiledInstanceDiscoveryScript->createValue((LONG)1));
+   }
+   else
+   {
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service instance discovery %s [%u] (%s)"), m_name, m_id, errorMsg);
+   }
+}
+
+void BusinessServicePrototype::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
+{
+   msg->setField(VID_INSTD_METHOD, m_instanceDiscoveryMethod);
+   msg->setField(VID_INSTD_FILTER, m_instanceDiscoveryData);
+   super::fillMessageInternal(msg, userId);
 }
 
 void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
