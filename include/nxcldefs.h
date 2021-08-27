@@ -295,10 +295,11 @@
 
 /**
  * Auto apply flags
- * Depricated flags for Container, Template and Policy
  */
-#define AAF_AUTO_APPLY            0x00000001
-#define AAF_AUTO_REMOVE           0x00000002
+#define AAF_AUTO_APPLY_1            0x00000001
+#define AAF_AUTO_REMOVE_1           0x00000002
+#define AAF_AUTO_APPLY_2            0x00000004
+#define AAF_AUTO_REMOVE_2           0x00000008
 
 /**
  * Chassis flags

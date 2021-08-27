@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-package org.netxms.nxmc.modules.objects.propertypages;
+package org.netxms.nxmc.modules.businessservice.propertypages;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.swt.SWT;
@@ -32,25 +32,24 @@ import org.netxms.client.NXCObjectModificationData;
 import org.netxms.client.NXCSession;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.BusinessService;
-import org.netxms.client.objects.Cluster;
-import org.netxms.client.objects.Container;
 import org.netxms.client.objects.GenericObject;
-import org.netxms.client.objects.interfaces.AutoBindObject;
+import org.netxms.client.objects.interfaces.AutoBindDCIObject;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.nxsl.widgets.ScriptEditor;
+import org.netxms.nxmc.modules.objects.propertypages.ObjectPropertyPage;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
- * "Auto Bind" property page
+ * "DCI Auto Bind" property page
  */
-public class AutoBind extends ObjectPropertyPage
+public class AutoBindDCI extends ObjectPropertyPage
 {
-   private static I18n i18n = LocalizationHelper.getI18n(AutoBind.class);
+   private static I18n i18n = LocalizationHelper.getI18n(AutoBindDCI.class);
    
-   private AutoBindObject autoBindObject;
+   private AutoBindDCIObject autoBindDCIObject;
 	private Button checkboxEnableBind;
 	private Button checkboxEnableUnbind;
 	private ScriptEditor filterSource;
@@ -58,9 +57,9 @@ public class AutoBind extends ObjectPropertyPage
    private boolean initialUnbind;
 	private String initialAutoBindFilter;
 	
-   public AutoBind(AbstractObject object)
+   public AutoBindDCI(AbstractObject object)
    {
-      super(i18n.tr("Object Auto Bind"), object);
+      super(i18n.tr("DCI Auto Bind"), object);
    }
 
    /**
@@ -71,13 +70,13 @@ public class AutoBind extends ObjectPropertyPage
 	{
       Composite dialogArea = new Composite(parent, SWT.NONE);
 		
-		autoBindObject = (AutoBindObject)object;
-		if (autoBindObject == null)	// Paranoid check
+		autoBindDCIObject = (AutoBindDCIObject)object;
+		if (autoBindDCIObject == null)	// Paranoid check
 			return dialogArea;
 
-      initialBind = autoBindObject.isAutoBindEnabled();
-      initialUnbind = autoBindObject.isAutoUnbindEnabled();
-		initialAutoBindFilter = autoBindObject.getAutoBindFilter();
+      initialBind = autoBindDCIObject.isDciAutoBindEnabled();
+      initialUnbind = autoBindDCIObject.isDciAutoUnbindEnabled();
+		initialAutoBindFilter = autoBindDCIObject.getDciAutoBindFilter();
 		
 		GridLayout layout = new GridLayout();
 		layout.verticalSpacing = WidgetHelper.OUTER_SPACING;
@@ -87,11 +86,8 @@ public class AutoBind extends ObjectPropertyPage
 
       // Enable/disable check box
       checkboxEnableBind = new Button(dialogArea, SWT.CHECK);
-      if (autoBindObject instanceof Cluster)
-         checkboxEnableBind.setText("Automatically add nodes selected by filter to this cluster");
-      else if (autoBindObject instanceof Container)
-         checkboxEnableBind.setText(i18n.tr("Automatically bind objects selected by filter to this container"));
-      checkboxEnableBind.setSelection(autoBindObject.isAutoBindEnabled());
+      checkboxEnableBind.setText("Automatically add DCI selected by filter to this business service as check");
+      checkboxEnableBind.setSelection(autoBindDCIObject.isDciAutoBindEnabled());
       checkboxEnableBind.addSelectionListener(new SelectionListener() {
 			@Override
 			public void widgetDefaultSelected(SelectionEvent e)
@@ -117,12 +113,9 @@ public class AutoBind extends ObjectPropertyPage
       });
       
       checkboxEnableUnbind = new Button(dialogArea, SWT.CHECK);
-      if (autoBindObject instanceof Cluster)
-         checkboxEnableUnbind.setText("Automatically remove nodes from this cluster when they no longer passes filter");
-      else if (autoBindObject instanceof Container)
-         checkboxEnableUnbind.setText(i18n.tr("Automatically unbind objects from this container when they no longer passes filter"));
-      checkboxEnableUnbind.setSelection(autoBindObject.isAutoUnbindEnabled());
-      checkboxEnableUnbind.setEnabled(autoBindObject.isAutoBindEnabled());
+      checkboxEnableUnbind.setText("Automatically remove DCI selected by filter from this business service");
+      checkboxEnableUnbind.setSelection(autoBindDCIObject.isDciAutoUnbindEnabled());
+      checkboxEnableUnbind.setEnabled(autoBindDCIObject.isDciAutoBindEnabled());
 
       // Filtering script
       Label label = new Label(dialogArea, SWT.NONE);
@@ -133,9 +126,9 @@ public class AutoBind extends ObjectPropertyPage
       label.setLayoutData(gd);
 
       filterSource = new ScriptEditor(dialogArea, SWT.BORDER, SWT.H_SCROLL | SWT.V_SCROLL, true,
-            "Variables:\r\n\t$node\tnode being tested (null if object is not a node).\r\n\t$object\tobject being tested.\r\n\t$container\tthis container object.\r\n\r\nReturn value: true to bind node to this container, false to unbind, null to make no changes.");
-      filterSource.setText(autoBindObject.getAutoBindFilter());
-      filterSource.setEnabled(autoBindObject.isAutoBindEnabled());
+            "Variables:\r\n\t$node\tnode being tested (null if object is not a node).\r\n\t$object\tobject being tested.\r\n\t$dci\tDCI object being tested.\r\n\r\nReturn value: true to bind dci to this business service, false to unbind, null to make no changes.");
+      filterSource.setText(autoBindDCIObject.getDciAutoBindFilter());
+      filterSource.setEnabled(autoBindDCIObject.isDciAutoBindEnabled());
 
 		gd = new GridData();
 		gd.grabExcessHorizontalSpace = true;
@@ -156,6 +149,9 @@ public class AutoBind extends ObjectPropertyPage
 	 */
 	protected boolean applyChanges(final boolean isApply)
 	{
+      if (checkboxEnableBind == null)
+         return false;
+      
       boolean apply = checkboxEnableBind.getSelection();
       boolean remove = checkboxEnableUnbind.getSelection();
 			
@@ -166,18 +162,18 @@ public class AutoBind extends ObjectPropertyPage
 			setValid(false);
 		
 		final NXCSession session =  Registry.getSession();
-		final NXCObjectModificationData md = new NXCObjectModificationData(((GenericObject)autoBindObject).getObjectId());
-		md.setAutoBindFilter(filterSource.getText());
-      md.setAutoBindFlags(apply, remove);
+		final NXCObjectModificationData md = new NXCObjectModificationData(((GenericObject)autoBindDCIObject).getObjectId());
+		md.setDciAutoBindFilter(filterSource.getText());
+      md.setDciAutoBindFlags(apply, remove);
 		
 		new Job(i18n.tr("Update auto-bind filter"), null, null) {
 			@Override
 			protected void run(IProgressMonitor monitor) throws Exception
 			{
 				session.modifyObject(md);
-		      initialBind = md.isAutoBindEnabled();
-		      initialUnbind = md.isAutoUnbindEnabled();
-				initialAutoBindFilter = md.getAutoBindFilter();
+		      initialBind = md.isDciAutoBindEnabled();
+		      initialUnbind = md.isDciAutoUnbindEnabled();
+				initialAutoBindFilter = md.getDciAutoBindFilter();
 			}
 
 			@Override
@@ -189,7 +185,7 @@ public class AutoBind extends ObjectPropertyPage
 						@Override
 						public void run()
 						{
-							AutoBind.this.setValid(true);
+							AutoBindDCI.this.setValid(true);
 						}
 					});
 				}
@@ -198,7 +194,7 @@ public class AutoBind extends ObjectPropertyPage
 			@Override
 			protected String getErrorMessage()
 			{
-				return i18n.tr("Cannot change container automatic bind options");
+				return i18n.tr("Cannot change dci automatic bind options");
 			}
 		}.start();
 		
@@ -227,12 +223,12 @@ public class AutoBind extends ObjectPropertyPage
    @Override
    public String getId()
    {
-      return "autoBind";
+      return "dciAutoBind";
    }
 
    @Override
    public boolean isVisible()
    {
-      return (object instanceof AutoBindObject) && !(object instanceof BusinessService);
+      return object instanceof BusinessService;
    }
 }

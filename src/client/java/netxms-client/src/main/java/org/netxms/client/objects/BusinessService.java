@@ -23,17 +23,23 @@ import org.netxms.base.NXCPCodes;
 import org.netxms.base.NXCPMessage;
 import org.netxms.client.NXCSession;
 import org.netxms.client.constants.AgentCacheMode;
+import org.netxms.client.objects.interfaces.AutoBindDCIObject;
 import org.netxms.client.objects.interfaces.AutoBindObject;
 import org.netxms.client.objects.interfaces.PollingTarget;
 
 /**
  * Business service representation
  */
-public class BusinessService extends ServiceContainer implements AutoBindObject, PollingTarget
+public class BusinessService extends ServiceContainer implements AutoBindObject, AutoBindDCIObject, PollingTarget
 {
-   private boolean autoBind;
-   private boolean autoUnbind;
-   private String autoBindFilter;
+   private boolean objectAutoBind;
+   private boolean objectAutoUnbind;
+   private String objectAutoBindFilter;
+   private boolean dciAutoBind;
+   private boolean dciAutoUnbind;
+   private String dciAutoBindFilter;
+   private int dciStatusThreshold;
+   private int nodeStatusThreshold;
    
    /**
     * @param msg
@@ -41,9 +47,12 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
    public BusinessService(NXCPMessage msg, NXCSession session)
    {
       super(msg, session);
-      autoBindFilter = msg.getFieldAsString(NXCPCodes.VID_AUTOBIND_FILTER);
-      autoBind = msg.getFieldAsBoolean(NXCPCodes.VID_AUTOBIND_FLAG);
-      autoUnbind = msg.getFieldAsBoolean(NXCPCodes.VID_AUTOUNBIND_FLAG);
+      objectAutoBindFilter = msg.getFieldAsString(NXCPCodes.VID_AUTOBIND_FILTER);
+      objectAutoBind = msg.getFieldAsBoolean(NXCPCodes.VID_AUTOBIND_FLAG);
+      objectAutoUnbind = msg.getFieldAsBoolean(NXCPCodes.VID_AUTOUNBIND_FLAG);
+      dciAutoBindFilter = msg.getFieldAsString(NXCPCodes.VID_DCI_AUTOBIND_FILTER);
+      dciAutoBind = msg.getFieldAsBoolean(NXCPCodes.VID_DCI_AUTOBIND_FLAG);
+      dciAutoUnbind = msg.getFieldAsBoolean(NXCPCodes.VID_DCI_AUTOUNBIND_FLAG);
    }
 
    /* (non-Javadoc)
@@ -69,7 +78,7 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
     */
    public boolean isAutoBindEnabled()
    {
-      return autoBind;
+      return objectAutoBind;
    }
 
    /**
@@ -77,7 +86,7 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
     */
    public boolean isAutoUnbindEnabled()
    {
-      return autoUnbind;
+      return objectAutoUnbind;
    }
 
    /**
@@ -85,7 +94,27 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
     */
    public String getAutoBindFilter()
    {
-      return autoBindFilter;
+      return objectAutoBindFilter;
+   }
+
+   @Override
+   public boolean isDciAutoBindEnabled()
+   {
+      return dciAutoBind;
+   }
+
+   @Override
+   public boolean isDciAutoUnbindEnabled()
+   {
+      // TODO Auto-generated method stub
+      return dciAutoUnbind;
+   }
+
+   @Override
+   public String getDciAutoBindFilter()
+   {
+      // TODO Auto-generated method stub
+      return dciAutoBindFilter;
    }
 
    /* (non-Javadoc)
@@ -104,7 +133,7 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
    public Set<String> getStrings()
    {
       Set<String> strings = super.getStrings();
-      addString(strings, autoBindFilter);
+      addString(strings, objectAutoBindFilter);
       return strings;
    }
 
@@ -178,5 +207,21 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
    public boolean canUseEtherNetIP()
    {
       return false;
+   }
+
+   /**
+    * @return the dciStatusThreshold
+    */
+   public int getDciStatusThreshold()
+   {
+      return dciStatusThreshold;
+   }
+
+   /**
+    * @return the nodeStatusThreshold
+    */
+   public int getNodeStatusThreshold()
+   {
+      return nodeStatusThreshold;
    }
 }

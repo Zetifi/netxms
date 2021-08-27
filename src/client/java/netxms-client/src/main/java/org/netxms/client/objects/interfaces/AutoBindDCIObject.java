@@ -19,22 +19,22 @@
 package org.netxms.client.objects.interfaces;
 
 /**
- * Interface for auto bind objects
+ * Interface for auto bind dci
  */
-public interface AutoBindObject
+public interface AutoBindDCIObject
 {   
    /**
     * @return true if automatic bind is enabled
     */
-   public boolean isAutoBindEnabled();
+   public boolean isDciAutoBindEnabled();
 
    /**
     * @return true if automatic unbind is enabled
     */
-   public boolean isAutoUnbindEnabled();
+   public boolean isDciAutoUnbindEnabled();
 
    /**
     * @return Filter script for automatic bind
     */
-   public String getAutoBindFilter();
+   public String getDciAutoBindFilter();
 }

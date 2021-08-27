@@ -269,15 +269,23 @@ static bool H_UpgradeFromV67()
       }
       DBFreeResult(slmDescriptionResult);
    }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
 
    //Delete all slm check object information
    DB_RESULT slmCheckResult = SQLSelect(_T("SELECT id FROM slm_checks"));
    if (slmCheckResult != nullptr)
    {
       int slmCheckCount = DBGetNumRows(slmCheckResult);
-      for(int i = 0; i < slmCheckCount; i++)
+      DB_STATEMENT hStmt = DBPrepare(g_dbHandle, _T("UPDATE slm_checks SET description=? WHERE id=?"), true);
+      if (hStmt != NULL)
       {
-         CHK_EXEC(BSCommonDeleteObject(DBGetFieldULong(slmCheckResult, i, 0)));
+         for(int i = 0; i < slmCheckCount; i++)
+         {
+            CHK_EXEC(BSCommonDeleteObject(DBGetFieldULong(slmCheckResult, i, 0)));
+         }
       }
       DBFreeResult(slmCheckResult);
    }
@@ -292,17 +300,48 @@ static bool H_UpgradeFromV67()
 
    //Update auto apply table
    static const TCHAR *autoBindBatch =
-      _T("ALTER TABLE auto_bind_target ADD dci_bind_filter $SQL:TEXT\n")
-      _T("ALTER TABLE auto_bind_target ADD dci_bind_flag char(1)\n")
-      _T("ALTER TABLE auto_bind_target ADD dci_unbind_flag integer\n")
-      _T("UPDATE auto_bind_target SET dci_bind_flag='0',dci_unbind_flag='0'\n")
+      _T("ALTER TABLE auto_bind_target ADD bind_filter_2 $SQL:TEXT\n")
+      _T("ALTER TABLE auto_bind_target ADD flags integer\n")
       _T("<END>");
    CHK_EXEC(SQLBatch(autoBindBatch));
-   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("auto_bind_target"), _T("dci_bind_flag")));
-   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("auto_bind_target"), _T("dci_unbind_flag")));
-   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_filter"), _T("object_bind_filter")));
-   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("unbind_flag"), _T("object_unbind_flag")));
-   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_flag"), _T("object_bind_flag")));
+
+   DB_RESULT autoBindResult = SQLSelect(_T("SELECT object_id,bind_flag,unbind_flag FROM auto_bind_target"));
+   if (autoBindResult != nullptr)
+   {
+      int autoBindCount = DBGetNumRows(slmCheckResult);
+      DB_STATEMENT hStmt = DBPrepare(g_dbHandle, _T("UPDATE auto_bind_target SET flags=? WHERE id=?"), true);
+      if (hStmt != NULL)
+      {
+         for(int i = 0; i < autoBindCount; i++)
+         {
+            int flag = DBGetFieldLong(autoBindResult, 0, 2) ? AAF_AUTO_APPLY_1 : 0;
+            flag |= DBGetFieldLong(autoBindResult, 0, 3) ? AAF_AUTO_REMOVE_1 : 0;
+
+            DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, flag);
+            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, DBGetFieldLong(autoBindResult, 0, 1));
+            if (!SQLExecute(hStmt) && !g_ignoreErrors)
+            {
+               DBFreeStatement(hStmt);
+               return false;
+            }
+         }
+         DBFreeStatement(hStmt);
+      }
+      else if (!g_ignoreErrors)
+      {
+         return false;
+      }
+      DBFreeResult(autoBindResult);
+   }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
+
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("auto_bind_target"), _T("flags")));
+   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_filter"), _T("bind_filter_1")));
+   CHK_EXEC(DBDropColumn(g_dbHandle, _T("auto_bind_target"), _T("unbind_flag")));
+   CHK_EXEC(DBDropColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_flag")));
 
    CHK_EXEC(SetMinorSchemaVersion(68));
    return true;

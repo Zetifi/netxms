@@ -226,7 +226,6 @@ public class AutoApply extends ObjectPropertyPage
    @Override
    public boolean isVisible()
    {
-      System.out.println(object);
       return object instanceof Template;
    }
    

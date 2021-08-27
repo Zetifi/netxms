@@ -215,7 +215,7 @@ public class ObjectContextMenuManager extends MenuManager
                return;
 
             final NXCSession session = Registry.getSession();
-            new Job(i18n.tr("Creating interface"), view, null) {
+            new Job(i18n.tr("Creating business service prototype"), view, null) {
                @Override
                protected void run(IProgressMonitor monitor) throws Exception
                {
@@ -227,7 +227,7 @@ public class ObjectContextMenuManager extends MenuManager
                @Override
                protected String getErrorMessage()
                {
-                  return String.format(i18n.tr("Cannot create interface object %s"), dlg.getName());
+                  return String.format(i18n.tr("Cannot create business service prototype object %s"), dlg.getName());
                }
             }.start();
          }

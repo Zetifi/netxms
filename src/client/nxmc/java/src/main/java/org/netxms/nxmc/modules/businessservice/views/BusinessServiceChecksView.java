@@ -25,6 +25,8 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.DoubleClickEvent;
+import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
@@ -130,6 +132,16 @@ public class BusinessServiceChecksView extends ObjectView
             WidgetHelper.saveColumnSettings(viewer.getTable(), ID);
          }
       });
+      
+      viewer.addDoubleClickListener(new IDoubleClickListener() {
+         
+         @Override
+         public void doubleClick(DoubleClickEvent event)
+         {
+            actionEdit.run();            
+         }
+      });
+      
       createActions();
       createPopupMenu();
 

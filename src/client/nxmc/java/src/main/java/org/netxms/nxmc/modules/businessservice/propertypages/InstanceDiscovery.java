@@ -159,10 +159,14 @@ public class InstanceDiscovery extends ObjectPropertyPage
    @Override
    protected boolean applyChanges(final boolean isApply)
 	{ 
+      if (discoveryMethod == null)
+         return false;
+      
       if (isApply)
          setValid(false);
       NXCSession session = Registry.getSession();     
       final NXCObjectModificationData md = new NXCObjectModificationData(object.getObjectId());
+      System.out.println(discoveryMethod);
       md.setInstanceDiscoveryMethod(discoveryMethod.getSelectionIndex());
       md.setInstanceDiscoveryData(discoveryData.getText());
       md.setInstanceDiscoveryFilter(filterScript.getText());

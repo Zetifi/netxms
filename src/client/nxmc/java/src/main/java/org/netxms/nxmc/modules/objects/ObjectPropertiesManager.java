@@ -30,6 +30,8 @@ import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Shell;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.netxms.nxmc.modules.businessservice.propertypages.AutoBindBusinessService;
+import org.netxms.nxmc.modules.businessservice.propertypages.AutoBindDCI;
 import org.netxms.nxmc.modules.businessservice.propertypages.InstanceDiscovery;
 import org.netxms.nxmc.modules.objects.propertypages.AccessControl;
 import org.netxms.nxmc.modules.objects.propertypages.AutoApply;
@@ -58,6 +60,8 @@ public class ObjectPropertiesManager
       pageClasses.add(InstanceDiscovery.class);
       pageClasses.add(AutoApply.class);
       pageClasses.add(AutoBind.class);
+      pageClasses.add(AutoBindBusinessService.class);
+      pageClasses.add(AutoBindDCI.class);
    }
 
    public static boolean openObjectPropertiesDialog(AbstractObject object, Shell shell)

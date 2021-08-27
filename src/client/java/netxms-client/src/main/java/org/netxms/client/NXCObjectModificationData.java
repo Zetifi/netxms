@@ -178,6 +178,9 @@ public class NXCObjectModificationData
    private Integer instanceDiscoveryMethod;
    private String instanceDiscoveryData;
    private String instanceDiscoveryFilter;
+   private String dciAutoBindFilter;
+   private Boolean isDciAutoBindEnabled;
+   private Boolean isDciAutoUnbindEnabled;
 
    /**
     * Constructor for creating modification data for given object
@@ -319,6 +322,22 @@ public class NXCObjectModificationData
    public void setAutoBindFilter(String autoBindFilter)
    {
       this.autoBindFilter = autoBindFilter;
+   }
+
+   /**
+    * @return the autoApplyFilter
+    */
+   public String getDciAutoBindFilter()
+   {
+      return dciAutoBindFilter;
+   }
+
+   /**
+    * @param autoBindFilter the autoApplyFilter to set
+    */
+   public void setDciAutoBindFilter(String dciAutoBindFilter)
+   {
+      this.dciAutoBindFilter = dciAutoBindFilter;
    }
 
    /**
@@ -1925,6 +1944,34 @@ public class NXCObjectModificationData
    public Boolean isAutoUnbindEnabled()
    {
       return isAutoUnbindEnabled;
+   }
+
+   /**
+    * Set abuto bind/remove options
+    *
+    * @param autoApply  TODO
+    * @param autoUnbind TODO
+    */
+   public void setDciAutoBindFlags(boolean dciAutoApply, boolean dciAutoUnbind)
+   {
+      isDciAutoBindEnabled = dciAutoApply;
+      isDciAutoUnbindEnabled = dciAutoUnbind;
+   }
+
+   /**
+    * @return if auto bind is enabled
+    */
+   public Boolean isDciAutoBindEnabled()
+   {
+      return isDciAutoBindEnabled;
+   }
+
+   /**
+    * @return if auto remove is enabled
+    */
+   public Boolean isDciAutoUnbindEnabled()
+   {
+      return isDciAutoUnbindEnabled;
    }
 
    /**

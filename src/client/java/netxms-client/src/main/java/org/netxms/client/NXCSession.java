@@ -129,6 +129,7 @@ import org.netxms.client.objects.AbstractNode;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.AccessPoint;
 import org.netxms.client.objects.BusinessService;
+import org.netxms.client.objects.BusinessServicePrototype;
 import org.netxms.client.objects.BusinessServiceRoot;
 import org.netxms.client.objects.Chassis;
 import org.netxms.client.objects.Cluster;
@@ -1449,7 +1450,7 @@ public class NXCSession
             object = new BusinessService(msg, this);
             break;
          case AbstractObject.OBJECT_BUSINESSSERVICE_PROTOTYPE:
-            object = new BusinessService(msg, this);
+            object = new BusinessServicePrototype(msg, this);
             break;
          case AbstractObject.OBJECT_BUSINESSSERVICEROOT:
             object = new BusinessServiceRoot(msg, this);
@@ -5954,12 +5955,25 @@ public class NXCSession
          msg.setField(NXCPCodes.VID_AUTOBIND_FILTER, data.getAutoBindFilter());
       }
 
+      if (data.getDciAutoBindFilter() != null)
+      {
+         msg.setField(NXCPCodes.VID_DCI_AUTOBIND_FILTER, data.getDciAutoBindFilter());
+      }
+
       if (data.isAutoBindEnabled() != null || data.isAutoUnbindEnabled() != null)
       {
          if (data.isAutoBindEnabled() == null || data.isAutoUnbindEnabled() == null)
             throw new NXCException(RCC.VARIABLE_NOT_FOUND);
          msg.setField(NXCPCodes.VID_AUTOBIND_FLAG, data.isAutoBindEnabled());
          msg.setField(NXCPCodes.VID_AUTOUNBIND_FLAG, data.isAutoUnbindEnabled());
+      }
+
+      if (data.isDciAutoBindEnabled() != null || data.isDciAutoUnbindEnabled() != null)
+      {
+         if (data.isDciAutoBindEnabled() == null || data.isDciAutoUnbindEnabled() == null)
+            throw new NXCException(RCC.VARIABLE_NOT_FOUND);
+         msg.setField(NXCPCodes.VID_DCI_AUTOBIND_FLAG, data.isDciAutoBindEnabled());
+         msg.setField(NXCPCodes.VID_DCI_AUTOUNBIND_FLAG, data.isDciAutoUnbindEnabled());
       }
 
       if (data.getFilter() != null)
