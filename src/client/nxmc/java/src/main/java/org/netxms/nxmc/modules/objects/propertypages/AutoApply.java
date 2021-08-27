@@ -197,25 +197,6 @@ public class AutoApply extends ObjectPropertyPage
 		
 		return true;
 	}
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.PreferencePage#performOk()
-	 */
-	@Override
-	public boolean performOk()
-	{
-		applyChanges(false);
-		return true;
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.PreferencePage#performApply()
-	 */
-	@Override
-	protected void performApply()
-	{
-		applyChanges(true);
-	}
 
    @Override
    public String getId()

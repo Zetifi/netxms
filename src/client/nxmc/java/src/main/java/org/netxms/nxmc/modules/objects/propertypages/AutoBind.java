@@ -60,7 +60,7 @@ public class AutoBind extends ObjectPropertyPage
 	
    public AutoBind(AbstractObject object)
    {
-      super(i18n.tr("Object Auto Bind"), object);
+      super(i18n.tr("Auto Bind"), object);
    }
 
    /**
@@ -203,25 +203,6 @@ public class AutoBind extends ObjectPropertyPage
 		}.start();
 		
 		return true;
-	}
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.PreferencePage#performOk()
-	 */
-	@Override
-	public boolean performOk()
-	{
-		applyChanges(false);
-		return true;
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.PreferencePage#performApply()
-	 */
-	@Override
-	protected void performApply()
-	{
-		applyChanges(true);
 	}
 
    @Override

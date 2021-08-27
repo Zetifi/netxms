@@ -158,10 +158,7 @@ public class InstanceDiscovery extends ObjectPropertyPage
     */
    @Override
    protected boolean applyChanges(final boolean isApply)
-	{ 
-      if (discoveryMethod == null)
-         return false;
-      
+	{       
       if (isApply)
          setValid(false);
       NXCSession session = Registry.getSession();     
@@ -204,25 +201,6 @@ public class InstanceDiscovery extends ObjectPropertyPage
 	}
 
    /**
-    * @see org.eclipse.jface.preference.PreferencePage#performOk()
-    */
-	@Override
-	public boolean performOk()
-	{
-		applyChanges(false);
-		return true;
-	}
-
-   /**
-    * @see org.eclipse.jface.preference.PreferencePage#performApply()
-    */
-	@Override
-	protected void performApply()
-	{
-		applyChanges(true);
-	}
-
-   /**
     * @see org.eclipse.jface.preference.PreferencePage#performDefaults()
     */
 	@Override
@@ -245,5 +223,14 @@ public class InstanceDiscovery extends ObjectPropertyPage
    public boolean isVisible()
    {
       return object instanceof BusinessServicePrototype;
+   }
+
+   /**
+    * @see org.netxms.nxmc.modules.objects.propertypages.ObjectPropertyPage#getPriority()
+    */
+   @Override
+   public int getPriority()
+   {
+      return 30;
    }
 }

@@ -148,10 +148,7 @@ public class AutoBindDCI extends ObjectPropertyPage
 	 * @param isApply true if update operation caused by "Apply" button
 	 */
 	protected boolean applyChanges(final boolean isApply)
-	{
-      if (checkboxEnableBind == null)
-         return false;
-      
+	{      
       boolean apply = checkboxEnableBind.getSelection();
       boolean remove = checkboxEnableUnbind.getSelection();
 			
@@ -200,25 +197,6 @@ public class AutoBindDCI extends ObjectPropertyPage
 		
 		return true;
 	}
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.PreferencePage#performOk()
-	 */
-	@Override
-	public boolean performOk()
-	{
-		applyChanges(false);
-		return true;
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.PreferencePage#performApply()
-	 */
-	@Override
-	protected void performApply()
-	{
-		applyChanges(true);
-	}
 
    @Override
    public String getId()
@@ -230,5 +208,14 @@ public class AutoBindDCI extends ObjectPropertyPage
    public boolean isVisible()
    {
       return object instanceof BusinessService;
+   }
+
+   /**
+    * @see org.netxms.nxmc.modules.objects.propertypages.ObjectPropertyPage#getPriority()
+    */
+   @Override
+   public int getPriority()
+   {
+      return 21;
    }
 }
