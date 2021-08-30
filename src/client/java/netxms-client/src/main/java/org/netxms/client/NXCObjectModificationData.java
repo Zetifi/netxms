@@ -181,6 +181,8 @@ public class NXCObjectModificationData
    private String dciAutoBindFilter;
    private Boolean isDciAutoBindEnabled;
    private Boolean isDciAutoUnbindEnabled;
+   private Integer objectStatusThreshold;
+   private Integer dciStatusThreshold;
 
    /**
     * Constructor for creating modification data for given object
@@ -2213,5 +2215,37 @@ public class NXCObjectModificationData
    public final void setInstanceDiscoveryFilter(String instanceDiscoveryFilter)
    {
       this.instanceDiscoveryFilter = instanceDiscoveryFilter;
+   }
+
+   /**
+    * @param ObjectStatusThreshold the ObjectStatusThreshold to set
+    */
+   public void setObjectStatusThreshold(Integer objectStatusThreshold)
+   {
+      this.objectStatusThreshold = objectStatusThreshold;
+   }
+
+   /**
+    * @return the objectStatusThreshold
+    */
+   public Integer getObjectStatusThreshold()
+   {
+      return objectStatusThreshold;
+   }
+
+   /**
+    * @return the dciStatusThreshold
+    */
+   public Integer getDciStatusThreshold()
+   {
+      return dciStatusThreshold;
+   }
+
+   /**
+    * @param dciStatusThreshold the dciStatusThreshold to set
+    */
+   public void setDciStatusThreshold(Integer dciStatusThreshold)
+   {
+      this.dciStatusThreshold = dciStatusThreshold;
    }
 }

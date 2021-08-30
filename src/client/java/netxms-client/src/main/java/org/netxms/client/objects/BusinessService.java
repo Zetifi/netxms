@@ -38,8 +38,8 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
    private boolean dciAutoBind;
    private boolean dciAutoUnbind;
    private String dciAutoBindFilter;
+   private int objectStatusThreshold;
    private int dciStatusThreshold;
-   private int nodeStatusThreshold;
    
    /**
     * @param msg
@@ -50,9 +50,11 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
       objectAutoBindFilter = msg.getFieldAsString(NXCPCodes.VID_AUTOBIND_FILTER);
       objectAutoBind = msg.getFieldAsBoolean(NXCPCodes.VID_AUTOBIND_FLAG);
       objectAutoUnbind = msg.getFieldAsBoolean(NXCPCodes.VID_AUTOUNBIND_FLAG);
+      objectStatusThreshold = msg.getFieldAsInt32(NXCPCodes.VID_OBJECT_STATUS_THRESHOLD);
       dciAutoBindFilter = msg.getFieldAsString(NXCPCodes.VID_DCI_AUTOBIND_FILTER);
       dciAutoBind = msg.getFieldAsBoolean(NXCPCodes.VID_DCI_AUTOBIND_FLAG);
       dciAutoUnbind = msg.getFieldAsBoolean(NXCPCodes.VID_DCI_AUTOUNBIND_FLAG);
+      dciStatusThreshold = msg.getFieldAsInt32(NXCPCodes.VID_DCI_STATUS_THRESHOLD);
    }
 
    /* (non-Javadoc)
@@ -217,11 +219,12 @@ public class BusinessService extends ServiceContainer implements AutoBindObject,
       return dciStatusThreshold;
    }
 
+
    /**
     * @return the nodeStatusThreshold
     */
-   public int getNodeStatusThreshold()
+   public int getObjectStatusThreshold()
    {
-      return nodeStatusThreshold;
+      return objectStatusThreshold;
    }
 }

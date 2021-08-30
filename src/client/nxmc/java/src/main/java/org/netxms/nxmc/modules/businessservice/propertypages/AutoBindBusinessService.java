@@ -25,6 +25,7 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
@@ -38,6 +39,7 @@ import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.nxsl.widgets.ScriptEditor;
 import org.netxms.nxmc.modules.objects.propertypages.ObjectPropertyPage;
+import org.netxms.nxmc.resources.StatusDisplayInfo;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
@@ -51,10 +53,12 @@ public class AutoBindBusinessService extends ObjectPropertyPage
    private BusinessService businessService;
 	private Button checkboxEnableBind;
 	private Button checkboxEnableUnbind;
+   private Combo thresholdCombo;
 	private ScriptEditor filterSource;
    private boolean initialBind;
    private boolean initialUnbind;
 	private String initialAutoBindFilter;
+   private int initialStatusThreshold;
 	
    public AutoBindBusinessService(AbstractObject object)
    {
@@ -76,6 +80,8 @@ public class AutoBindBusinessService extends ObjectPropertyPage
       initialBind = businessService.isAutoBindEnabled();
       initialUnbind = businessService.isAutoUnbindEnabled();
 		initialAutoBindFilter = businessService.getAutoBindFilter();
+      initialAutoBindFilter = businessService.getAutoBindFilter();
+      initialStatusThreshold = businessService.getObjectStatusThreshold();
 		
 		GridLayout layout = new GridLayout();
 		layout.verticalSpacing = WidgetHelper.OUTER_SPACING;
@@ -115,6 +121,12 @@ public class AutoBindBusinessService extends ObjectPropertyPage
       checkboxEnableUnbind.setText("Automatically remove objects selected by filter from this business service");
       checkboxEnableUnbind.setSelection(businessService.isAutoUnbindEnabled());
       checkboxEnableUnbind.setEnabled(businessService.isAutoBindEnabled());
+      
+      thresholdCombo = WidgetHelper.createLabeledCombo(dialogArea, SWT.READ_ONLY, i18n.tr("Status Threashold"), new GridData());
+      thresholdCombo.add(i18n.tr("Default"));   
+      for (int i = 1; i <= 4; i++)
+         thresholdCombo.add(StatusDisplayInfo.getStatusText(i)); 
+      thresholdCombo.select(businessService.getObjectStatusThreshold());
 
       // Filtering script
       Label label = new Label(dialogArea, SWT.NONE);
@@ -151,7 +163,7 @@ public class AutoBindBusinessService extends ObjectPropertyPage
       boolean apply = checkboxEnableBind.getSelection();
       boolean remove = checkboxEnableUnbind.getSelection();
 			
-		if ((apply == initialBind) && (remove == initialUnbind) && initialAutoBindFilter.equals(filterSource.getText()))
+		if ((apply == initialBind) && (remove == initialUnbind) && (initialStatusThreshold == thresholdCombo.getSelectionIndex()) && initialAutoBindFilter.equals(filterSource.getText()))
 			return false;		// Nothing to apply
 
 		if (isApply)
@@ -161,6 +173,7 @@ public class AutoBindBusinessService extends ObjectPropertyPage
 		final NXCObjectModificationData md = new NXCObjectModificationData(((GenericObject)businessService).getObjectId());
 		md.setAutoBindFilter(filterSource.getText());
       md.setAutoBindFlags(apply, remove);
+      md.setObjectStatusThreshold(thresholdCombo.getSelectionIndex());
 		
 		new Job(i18n.tr("Update auto-bind filter"), null, null) {
 			@Override
@@ -170,6 +183,7 @@ public class AutoBindBusinessService extends ObjectPropertyPage
 		      initialBind = md.isAutoBindEnabled();
 		      initialUnbind = md.isAutoUnbindEnabled();
 				initialAutoBindFilter = md.getAutoBindFilter();
+				initialStatusThreshold = md.getObjectStatusThreshold();
 			}
 
 			@Override
@@ -190,7 +204,7 @@ public class AutoBindBusinessService extends ObjectPropertyPage
 			@Override
 			protected String getErrorMessage()
 			{
-				return i18n.tr("Cannot change container automatic bind options");
+				return i18n.tr("Cannot change business service objects automatic bind options");
 			}
 		}.start();
 		

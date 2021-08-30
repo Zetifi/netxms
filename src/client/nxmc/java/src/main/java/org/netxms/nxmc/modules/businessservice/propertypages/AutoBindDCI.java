@@ -25,6 +25,7 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
@@ -33,12 +34,12 @@ import org.netxms.client.NXCSession;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.BusinessService;
 import org.netxms.client.objects.GenericObject;
-import org.netxms.client.objects.interfaces.AutoBindDCIObject;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.nxsl.widgets.ScriptEditor;
 import org.netxms.nxmc.modules.objects.propertypages.ObjectPropertyPage;
+import org.netxms.nxmc.resources.StatusDisplayInfo;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
@@ -49,13 +50,15 @@ public class AutoBindDCI extends ObjectPropertyPage
 {
    private static I18n i18n = LocalizationHelper.getI18n(AutoBindDCI.class);
    
-   private AutoBindDCIObject autoBindDCIObject;
+   private BusinessService businessService;
 	private Button checkboxEnableBind;
 	private Button checkboxEnableUnbind;
+   private Combo thresholdCombo;
 	private ScriptEditor filterSource;
    private boolean initialBind;
    private boolean initialUnbind;
 	private String initialAutoBindFilter;
+   private int initialStatusThreshold;
 	
    public AutoBindDCI(AbstractObject object)
    {
@@ -70,13 +73,13 @@ public class AutoBindDCI extends ObjectPropertyPage
 	{
       Composite dialogArea = new Composite(parent, SWT.NONE);
 		
-		autoBindDCIObject = (AutoBindDCIObject)object;
-		if (autoBindDCIObject == null)	// Paranoid check
+		businessService = (BusinessService)object;
+		if (businessService == null)	// Paranoid check
 			return dialogArea;
 
-      initialBind = autoBindDCIObject.isDciAutoBindEnabled();
-      initialUnbind = autoBindDCIObject.isDciAutoUnbindEnabled();
-		initialAutoBindFilter = autoBindDCIObject.getDciAutoBindFilter();
+      initialBind = businessService.isDciAutoBindEnabled();
+      initialUnbind = businessService.isDciAutoUnbindEnabled();
+		initialAutoBindFilter = businessService.getDciAutoBindFilter();
 		
 		GridLayout layout = new GridLayout();
 		layout.verticalSpacing = WidgetHelper.OUTER_SPACING;
@@ -87,7 +90,7 @@ public class AutoBindDCI extends ObjectPropertyPage
       // Enable/disable check box
       checkboxEnableBind = new Button(dialogArea, SWT.CHECK);
       checkboxEnableBind.setText("Automatically add DCI selected by filter to this business service as check");
-      checkboxEnableBind.setSelection(autoBindDCIObject.isDciAutoBindEnabled());
+      checkboxEnableBind.setSelection(businessService.isDciAutoBindEnabled());
       checkboxEnableBind.addSelectionListener(new SelectionListener() {
 			@Override
 			public void widgetDefaultSelected(SelectionEvent e)
@@ -114,8 +117,14 @@ public class AutoBindDCI extends ObjectPropertyPage
       
       checkboxEnableUnbind = new Button(dialogArea, SWT.CHECK);
       checkboxEnableUnbind.setText("Automatically remove DCI selected by filter from this business service");
-      checkboxEnableUnbind.setSelection(autoBindDCIObject.isDciAutoUnbindEnabled());
-      checkboxEnableUnbind.setEnabled(autoBindDCIObject.isDciAutoBindEnabled());
+      checkboxEnableUnbind.setSelection(businessService.isDciAutoUnbindEnabled());
+      checkboxEnableUnbind.setEnabled(businessService.isDciAutoBindEnabled());
+
+      thresholdCombo = WidgetHelper.createLabeledCombo(dialogArea, SWT.READ_ONLY, i18n.tr("Status Threashold"), new GridData());
+      thresholdCombo.add(i18n.tr("Default"));   
+      for (int i = 1; i <= 4; i++)
+         thresholdCombo.add(StatusDisplayInfo.getStatusText(i)); 
+      thresholdCombo.select(businessService.getDciStatusThreshold());
 
       // Filtering script
       Label label = new Label(dialogArea, SWT.NONE);
@@ -127,8 +136,8 @@ public class AutoBindDCI extends ObjectPropertyPage
 
       filterSource = new ScriptEditor(dialogArea, SWT.BORDER, SWT.H_SCROLL | SWT.V_SCROLL, true,
             "Variables:\r\n\t$node\tnode being tested (null if object is not a node).\r\n\t$object\tobject being tested.\r\n\t$dci\tDCI object being tested.\r\n\r\nReturn value: true to bind dci to this business service, false to unbind, null to make no changes.");
-      filterSource.setText(autoBindDCIObject.getDciAutoBindFilter());
-      filterSource.setEnabled(autoBindDCIObject.isDciAutoBindEnabled());
+      filterSource.setText(businessService.getDciAutoBindFilter());
+      filterSource.setEnabled(businessService.isDciAutoBindEnabled());
 
 		gd = new GridData();
 		gd.grabExcessHorizontalSpace = true;
@@ -152,16 +161,17 @@ public class AutoBindDCI extends ObjectPropertyPage
       boolean apply = checkboxEnableBind.getSelection();
       boolean remove = checkboxEnableUnbind.getSelection();
 			
-		if ((apply == initialBind) && (remove == initialUnbind) && initialAutoBindFilter.equals(filterSource.getText()))
+		if ((apply == initialBind) && (remove == initialUnbind) && (initialStatusThreshold == thresholdCombo.getSelectionIndex()) && initialAutoBindFilter.equals(filterSource.getText()))
 			return false;		// Nothing to apply
 
 		if (isApply)
 			setValid(false);
 		
 		final NXCSession session =  Registry.getSession();
-		final NXCObjectModificationData md = new NXCObjectModificationData(((GenericObject)autoBindDCIObject).getObjectId());
+		final NXCObjectModificationData md = new NXCObjectModificationData(((GenericObject)businessService).getObjectId());
 		md.setDciAutoBindFilter(filterSource.getText());
       md.setDciAutoBindFlags(apply, remove);
+      md.setDciStatusThreshold(thresholdCombo.getSelectionIndex());
 		
 		new Job(i18n.tr("Update auto-bind filter"), null, null) {
 			@Override
@@ -171,6 +181,7 @@ public class AutoBindDCI extends ObjectPropertyPage
 		      initialBind = md.isDciAutoBindEnabled();
 		      initialUnbind = md.isDciAutoUnbindEnabled();
 				initialAutoBindFilter = md.getDciAutoBindFilter();
+            initialStatusThreshold = md.getDciStatusThreshold();
 			}
 
 			@Override

@@ -6570,6 +6570,16 @@ public class NXCSession
          msg.setField(NXCPCodes.VID_INSTD_FILTER, data.getInstanceDiscoveryFilter());
       }
 
+      if (data.getObjectStatusThreshold() != null)
+      {
+         msg.setFieldInt32(NXCPCodes.VID_OBJECT_STATUS_THRESHOLD, data.getObjectStatusThreshold());
+      }
+
+      if (data.getDciStatusThreshold() != null)
+      {
+         msg.setFieldInt32(NXCPCodes.VID_DCI_STATUS_THRESHOLD, data.getDciStatusThreshold());
+      }
+
       modifyCustomObject(data, userData, msg);
 
       sendMessage(msg);

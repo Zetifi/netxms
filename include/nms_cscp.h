@@ -1469,6 +1469,8 @@ typedef struct
 #define VID_DCI_AUTOBIND_FLAG       ((uint32_t)773)
 #define VID_DCI_AUTOUNBIND_FLAG     ((uint32_t)774)
 #define VID_DCI_AUTOBIND_FILTER     ((uint32_t)775)
+#define VID_OBJECT_STATUS_THRESHOLD ((uint32_t)776)
+#define VID_DCI_STATUS_THRESHOLD    ((uint32_t)777)
 
 // Base variabe for single threshold in message
 #define VID_THRESHOLD_BASE          ((UINT32)0x00800000)

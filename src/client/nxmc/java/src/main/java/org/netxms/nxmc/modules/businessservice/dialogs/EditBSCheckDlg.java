@@ -26,7 +26,7 @@ import org.xnap.commons.i18n.I18n;
 public class EditBSCheckDlg extends Dialog
 {
    private static final I18n i18n = LocalizationHelper.getI18n(EditBSCheckDlg.class);
-   private static final String[] TYPES = {i18n.tr("Node"), i18n.tr("Script"), i18n.tr("DCI")};
+   private static final String[] TYPES = {i18n.tr("Object"), i18n.tr("Script"), i18n.tr("DCI")};
    
    private ServiceCheck check;
    private boolean createNew;
