@@ -30,7 +30,7 @@ import org.netxms.client.objects.interfaces.PollingTarget;
 /**
  * Business service representation
  */
-public class BusinessService extends ServiceContainer implements AutoBindObject, AutoBindDCIObject, PollingTarget
+public class BusinessService extends GenericObject implements AutoBindObject, AutoBindDCIObject, PollingTarget
 {
    private boolean objectAutoBind;
    private boolean objectAutoUnbind;

@@ -164,7 +164,7 @@ public class AutoBindBusinessService extends ObjectPropertyPage
       boolean remove = checkboxEnableUnbind.getSelection();
 			
 		if ((apply == initialBind) && (remove == initialUnbind) && (initialStatusThreshold == thresholdCombo.getSelectionIndex()) && initialAutoBindFilter.equals(filterSource.getText()))
-			return false;		// Nothing to apply
+			return true;		// Nothing to apply
 
 		if (isApply)
 			setValid(false);

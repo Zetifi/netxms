@@ -163,7 +163,6 @@ public class InstanceDiscovery extends ObjectPropertyPage
          setValid(false);
       NXCSession session = Registry.getSession();     
       final NXCObjectModificationData md = new NXCObjectModificationData(object.getObjectId());
-      System.out.println(discoveryMethod);
       md.setInstanceDiscoveryMethod(discoveryMethod.getSelectionIndex());
       md.setInstanceDiscoveryData(discoveryData.getText());
       md.setInstanceDiscoveryFilter(filterScript.getText());

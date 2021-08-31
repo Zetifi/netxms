@@ -153,7 +153,7 @@ public class AutoApply extends ObjectPropertyPage
       boolean remove = checkboxEnableRemove.getSelection();
 			
 		if ((apply == initialBind) && (remove == initialUnbind) && initialApplyFilter.equals(filterSource.getText()))
-			return false;		// Nothing to apply
+			return true;		// Nothing to apply
 		
 		if (isApply)
 			setValid(false);

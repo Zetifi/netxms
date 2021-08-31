@@ -30,7 +30,6 @@ import org.netxms.client.objects.MobileDevice;
 import org.netxms.client.objects.Node;
 import org.netxms.client.objects.Rack;
 import org.netxms.client.objects.Sensor;
-import org.netxms.client.objects.ServiceContainer;
 import org.netxms.client.objects.Subnet;
 import org.netxms.client.objects.Zone;
 import org.netxms.client.users.AbstractUserObject;
@@ -276,10 +275,11 @@ public class GeneralInfo extends TableElement
 				Zone zone = (Zone)object;
             addPair(i18n.tr("Zone UIN"), Long.toString(zone.getUIN()));
 				break;
+			case AbstractObject.OBJECT_BUSINESSSERVICE_PROTOTYPE:
+            addPair(i18n.tr("Is Prorotype"), i18n.tr("Yes"));
+            break;
 			case AbstractObject.OBJECT_BUSINESSSERVICE:
-			case AbstractObject.OBJECT_BUSINESSSERVICEROOT:
-				ServiceContainer service = (ServiceContainer)object;
-				//TODO: is prototype 
+            addPair(i18n.tr("Is Prorotype"), i18n.tr("No"));
 				break;
 			default:
 				break;

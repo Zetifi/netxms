@@ -18,7 +18,6 @@
  */
 package org.netxms.ui.eclipse.objectview.objecttabs.elements;
 
-import java.text.NumberFormat;
 import org.eclipse.swt.widgets.Composite;
 import org.netxms.base.GeoLocation;
 import org.netxms.client.NXCSession;
@@ -31,7 +30,6 @@ import org.netxms.client.objects.MobileDevice;
 import org.netxms.client.objects.Node;
 import org.netxms.client.objects.Rack;
 import org.netxms.client.objects.Sensor;
-import org.netxms.client.objects.ServiceContainer;
 import org.netxms.client.objects.Subnet;
 import org.netxms.client.objects.Zone;
 import org.netxms.client.users.AbstractUserObject;
@@ -281,16 +279,6 @@ public class GeneralInfo extends TableElement
 			case AbstractObject.OBJECT_ZONE:
 				Zone zone = (Zone)object;
 				addPair(Messages.get().GeneralInfo_ZoneId, Long.toString(zone.getUIN()));
-				break;
-			case AbstractObject.OBJECT_BUSINESSSERVICE:
-			case AbstractObject.OBJECT_BUSINESSSERVICEROOT:
-				ServiceContainer service = (ServiceContainer)object;
-				NumberFormat nf = NumberFormat.getNumberInstance();
-				nf.setMinimumFractionDigits(3);
-				nf.setMaximumFractionDigits(3);
-				addPair(Messages.get().GeneralInfo_UptimeDay, nf.format(service.getUptimeForDay()) + "%"); //$NON-NLS-1$
-				addPair(Messages.get().GeneralInfo_UptimeWeek, nf.format(service.getUptimeForWeek()) + "%"); //$NON-NLS-1$
-				addPair(Messages.get().GeneralInfo_UptimeMonth, nf.format(service.getUptimeForMonth()) + "%"); //$NON-NLS-1$
 				break;
 			default:
 				break;

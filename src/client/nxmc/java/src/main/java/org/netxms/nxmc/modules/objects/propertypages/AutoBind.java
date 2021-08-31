@@ -160,7 +160,7 @@ public class AutoBind extends ObjectPropertyPage
       boolean remove = checkboxEnableUnbind.getSelection();
 			
 		if ((apply == initialBind) && (remove == initialUnbind) && initialAutoBindFilter.equals(filterSource.getText()))
-			return false;		// Nothing to apply
+			return true;		// Nothing to apply
 
 		if (isApply)
 			setValid(false);
