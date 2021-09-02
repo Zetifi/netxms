@@ -65,9 +65,9 @@ static bool BSCommonDeleteObject(uint32_t id)
 }
 
 /**
- * Upgrade from 40.67 to 40.68
+ * Upgrade from 40.68 to 40.69
  */
-static bool H_UpgradeFromV67()
+static bool H_UpgradeFromV68()
 {
    CHK_EXEC(CreateConfigParam(_T("BusinessServices.Check.Threshold.DataCollection"),
          _T("1"),
@@ -79,6 +79,11 @@ static bool H_UpgradeFromV67()
          _T("Default threshold for business service objects checks"),
          _T(""),
          'C', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(_T("BusinessServices.History.RetentionTime"),
+         _T("1"),
+         _T("Retention time for business service historical data"),
+         _T("days"),
+         'I', true, false, false, false));
 
    static const TCHAR *configBatch =
       _T("INSERT INTO config_values (var_name,var_value,var_description) VALUES ('BusinessServices.Check.Threshold.DataCollection','1','Warning')\n")
@@ -232,13 +237,17 @@ static bool H_UpgradeFromV67()
       return false;
    }
 
+   //slm check
+   CHK_EXEC(SQLQuery(_T("ALTER TABLE slm_tickets ADD check_description varchar(1023)\n")));
+
    //Update slm check description and relationship with business service
    DB_RESULT slmDescriptionResult = SQLSelect(_T("SELECT id,name FROM object_properties op INNER JOIN slm_checks sc ON sc.id=op.object_id"));
    if (slmDescriptionResult != nullptr)
    {
       int count = DBGetNumRows(slmDescriptionResult);
-      DB_STATEMENT hStmt = DBPrepare(g_dbHandle, _T("UPDATE slm_checks SET description=? WHERE id=?"), true);
-      if (hStmt != NULL)
+      DB_STATEMENT hStmtCheck = DBPrepare(g_dbHandle, _T("UPDATE slm_checks SET description=? WHERE id=?"), true);
+      DB_STATEMENT hStmtTicket = DBPrepare(g_dbHandle, _T("UPDATE slm_tickets SET check_description=? WHERE check_id=?"), true);
+      if (hStmtCheck != nullptr && hStmtTicket != nullptr)
       {
          for(int i = 0; i < count; i++)
          {
@@ -253,15 +262,24 @@ static bool H_UpgradeFromV67()
             if (!SQLQuery(query) && !g_ignoreErrors)
                return false;
 
-            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, DBGetField(slmDescriptionResult, i, 1, nullptr, 0), DB_BIND_DYNAMIC);
-            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, checkId);
-            if (!SQLExecute(hStmt) && !g_ignoreErrors)
+            DBBind(hStmtCheck, 1, DB_SQLTYPE_VARCHAR, DBGetField(slmDescriptionResult, i, 1, nullptr, 0), DB_BIND_DYNAMIC);
+            DBBind(hStmtCheck, 2, DB_SQLTYPE_INTEGER, checkId);
+            if (!SQLExecute(hStmtCheck) && !g_ignoreErrors)
             {
-               DBFreeStatement(hStmt);
+               DBFreeStatement(hStmtCheck);
+               return false;
+            }
+
+            DBBind(hStmtTicket, 1, DB_SQLTYPE_VARCHAR, DBGetField(slmDescriptionResult, i, 1, nullptr, 0), DB_BIND_DYNAMIC);
+            DBBind(hStmtTicket, 2, DB_SQLTYPE_INTEGER, checkId);
+            if (!SQLExecute(hStmtTicket) && !g_ignoreErrors)
+            {
+               DBFreeStatement(hStmtTicket);
                return false;
             }
          }
-         DBFreeStatement(hStmt);
+         DBFreeStatement(hStmtCheck);
+         DBFreeStatement(hStmtTicket);
       }
       else if (!g_ignoreErrors)
       {
@@ -338,12 +356,7 @@ static bool H_UpgradeFromV67()
       return false;
    }
 
-   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("auto_bind_target"), _T("flags")));
-   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_filter"), _T("bind_filter_1")));
-   CHK_EXEC(DBDropColumn(g_dbHandle, _T("auto_bind_target"), _T("unbind_flag")));
-   CHK_EXEC(DBDropColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_flag")));
-
-   CHK_EXEC(SetMinorSchemaVersion(68));
+   CHK_EXEC(SetMinorSchemaVersion(69));
    return true;
 }
 
@@ -2237,6 +2250,7 @@ static struct
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] =
 {
+   { 68, 40, 69, H_UpgradeFromV68 },
    { 67, 40, 68, H_UpgradeFromV67 },
    { 66, 40, 67, H_UpgradeFromV66 },
    { 65, 40, 66, H_UpgradeFromV65 },
