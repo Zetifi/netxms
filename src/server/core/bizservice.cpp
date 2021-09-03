@@ -760,6 +760,7 @@ void GetServiceTickets(uint32_t serviceId, time_t from, time_t to, NXCPMessage* 
                msg->setField(VID_SLM_TICKETS_LIST_BASE + ( i * 10 ) + 3, create_timestamp);
                msg->setField(VID_SLM_TICKETS_LIST_BASE + ( i * 10 ) + 4, close_timestamp);
                msg->setField(VID_SLM_TICKETS_LIST_BASE + ( i * 10 ) + 5, reason);
+               msg->setField(VID_SLM_TICKETS_LIST_BASE + ( i * 10 ) + 6, _T("Placeholder for check description"));
             }
             msg->setField(VID_SLM_TICKETS_COUNT, count);
             DBFreeResult(hResult);
