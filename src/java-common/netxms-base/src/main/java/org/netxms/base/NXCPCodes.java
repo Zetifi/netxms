@@ -1096,8 +1096,8 @@ public class NXCPCodes
    public static final long VID_VLAN_LIST = 622;
    public static final long VID_TASK_KEY = 623;
    public static final long VID_TIMER_COUNT = 624;
-   public static final long VID_AUTOBIND_FLAG = 625;
-   public static final long VID_AUTOUNBIND_FLAG = 626;
+   public static final long VID_AUTOBIND_FLAGS = 625;
+   public static final long VID_AUTOBIND_FILTER_2 = 626;
    public static final long VID_TIMEOUT = 627;
    public static final long VID_PROGRESS = 628;
    public static final long VID_POLICY_COUNT = 629;
@@ -1242,13 +1242,10 @@ public class NXCPCodes
    public static final long VID_SLMCHECK_RELATED_OBJECT = 770;
    public static final long VID_SLMCHECK_RELATED_DCI = 771;
    public static final long VID_THRESHOLD = 772;
-   public static final long VID_DCI_AUTOBIND_FLAG = 773;
-   public static final long VID_DCI_AUTOUNBIND_FLAG = 774;
-   public static final long VID_DCI_AUTOBIND_FILTER = 775;
-   public static final long VID_OBJECT_STATUS_THRESHOLD = 776;
-   public static final long VID_DCI_STATUS_THRESHOLD = 777;
-   public static final long VID_BUSINESS_SERVICE_UPTIME = 778;
-   public static final long VID_SLM_TICKETS_COUNT = 779;
+   public static final long VID_OBJECT_STATUS_THRESHOLD = 773;
+   public static final long VID_DCI_STATUS_THRESHOLD = 774;
+   public static final long VID_BUSINESS_SERVICE_UPTIME = 775;
+   public static final long VID_SLM_TICKETS_COUNT = 776;
 
 	public static final long VID_ACL_USER_BASE = 0x00001000L;
 	public static final long VID_ACL_USER_LAST = 0x00001FFFL;

@@ -22,6 +22,8 @@
 
 #include "nxcore.h"
 
+#define DEBUG_TAG _T("autobind.target")
+
 /**
  * Auto bind object constructor
  */
@@ -146,21 +148,9 @@ void AutoBindTarget::setAutoBindDCIFilter(const TCHAR *filter)
 void AutoBindTarget::modifyFromMessage(NXCPMessage *request)
 {
    internalLock();
-   if (request->isFieldExist(VID_AUTOBIND_FLAG))
+   if (request->isFieldExist(VID_AUTOBIND_FLAGS))
    {
-      setAutoBindFlag(request->getFieldAsBoolean(VID_AUTOBIND_FLAG), AAF_AUTO_APPLY_1);
-   }
-   if (request->isFieldExist(VID_AUTOUNBIND_FLAG))
-   {
-      setAutoBindFlag(request->getFieldAsBoolean(VID_AUTOUNBIND_FLAG), AAF_AUTO_REMOVE_1);
-   }
-   if (request->isFieldExist(VID_DCI_AUTOBIND_FLAG))
-   {
-      setAutoBindFlag(request->getFieldAsBoolean(VID_DCI_AUTOBIND_FLAG), AAF_AUTO_APPLY_2);
-   }
-   if (request->isFieldExist(VID_DCI_AUTOUNBIND_FLAG))
-   {
-      setAutoBindFlag(request->getFieldAsBoolean(VID_DCI_AUTOUNBIND_FLAG), AAF_AUTO_REMOVE_2);
+      m_autoBindFlags = request->getFieldAsUInt32(VID_AUTOBIND_FLAGS);
    }
    internalUnlock();
 
@@ -173,9 +163,9 @@ void AutoBindTarget::modifyFromMessage(NXCPMessage *request)
    }
 
    // Change apply filter
-   if (request->isFieldExist(VID_DCI_AUTOBIND_FILTER))
+   if (request->isFieldExist(VID_AUTOBIND_FILTER_2))
    {
-      TCHAR *filter = request->getFieldAsString(VID_DCI_AUTOBIND_FILTER);
+      TCHAR *filter = request->getFieldAsString(VID_AUTOBIND_FILTER_2);
       setAutoBindDCIFilter(filter);
       MemFree(filter);
    }
@@ -187,43 +177,43 @@ void AutoBindTarget::modifyFromMessage(NXCPMessage *request)
 void AutoBindTarget::fillMessage(NXCPMessage *msg)
 {
    internalLock();
-   msg->setField(VID_AUTOBIND_FLAG, isAutoBindEnabled());
-   msg->setField(VID_AUTOUNBIND_FLAG, isAutoUnbindEnabled());
+   msg->setField(VID_AUTOBIND_FLAGS, m_autoBindFlags);
    msg->setField(VID_AUTOBIND_FILTER, CHECK_NULL_EX(m_bindFilterSource));
-   msg->setField(VID_DCI_AUTOBIND_FLAG, isAutoBindDCIEnabled());
-   msg->setField(VID_DCI_AUTOUNBIND_FLAG, isAutoUnbindDCIEnabled());
-   msg->setField(VID_DCI_AUTOBIND_FILTER, CHECK_NULL_EX(m_bindFilterSourceDCI));
+   msg->setField(VID_AUTOBIND_FILTER_2, CHECK_NULL_EX(m_bindFilterSourceDCI));
    internalUnlock();
 }
 
 /**
  * Load object from database
  */
-bool AutoBindTarget::loadFromDatabase(DB_HANDLE hdb, UINT32 objectId)
+bool AutoBindTarget::loadFromDatabase(DB_HANDLE hdb, uint32_t objectId)
 {
-   TCHAR szQuery[256];
+   bool success = false;
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT bind_filter_1,bind_filter_2,flags FROM auto_bind_target WHERE object_id=?"));
+   if (hStmt == NULL)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from auto_bind_target"));
+   }
+   else
+   {
+      DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, objectId);
+      DB_RESULT hResult = DBSelectPrepared(hStmt);
+      if (hResult != nullptr)
+      {
+         TCHAR *filter = DBGetField(hResult, 0, 0, nullptr, 0);
+         setAutoBindFilter(filter);
+         MemFree(filter);
+         TCHAR *filterDCI = DBGetField(hResult, 0, 1, nullptr, 0);
+         setAutoBindDCIFilter(filterDCI);
+         MemFree(filterDCI);
+         m_autoBindFlags = DBGetFieldULong(hResult, 0, 2);
+         DBFreeResult(hResult);
+         success = true;
+      }
+      DBFreeStatement(hStmt);
+   }
 
-   _sntprintf(szQuery, sizeof(szQuery) / sizeof(TCHAR), _T("SELECT object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag FROM auto_bind_target WHERE object_id=%d"), objectId);
-   DB_RESULT hResult = DBSelect(hdb, szQuery);
-   if (hResult == nullptr)
-      return false;
-
-   TCHAR *filter = DBGetField(hResult, 0, 0, nullptr, 0);
-   setAutoBindFilter(filter);
-   MemFree(filter);
-
-   setAutoBindFlag(DBGetFieldLong(hResult, 0, 1) ? true : false, AAF_AUTO_APPLY_1);
-   setAutoBindFlag(DBGetFieldLong(hResult, 0, 2) ? true : false, AAF_AUTO_REMOVE_1);
-
-   TCHAR *filterDCI = DBGetField(hResult, 0, 3, nullptr, 0);
-   setAutoBindDCIFilter(filterDCI);
-   MemFree(filterDCI);
-
-   setAutoBindFlag(DBGetFieldLong(hResult, 0, 4) ? true : false, AAF_AUTO_APPLY_2);
-   setAutoBindFlag(DBGetFieldLong(hResult, 0, 5) ? true : false, AAF_AUTO_REMOVE_2);
-
-   DBFreeResult(hResult);
-   return true;
+   return success;
 }
 
 /**
@@ -236,22 +226,19 @@ bool AutoBindTarget::saveToDatabase(DB_HANDLE hdb)
    DB_STATEMENT hStmt;
    if (IsDatabaseRecordExist(hdb, _T("auto_bind_target"), _T("object_id"), m_this->getId()))
    {
-      hStmt = DBPrepare(hdb, _T("UPDATE auto_bind_target SET object_bind_filter=?,object_bind_flag=?,object_unbind_flag=?,dci_bind_filter=?,dci_bind_flag=?,dci_unbind_flag=? WHERE object_id=?"));
+      hStmt = DBPrepare(hdb, _T("UPDATE auto_bind_target SET bind_filter_1=?,bind_filter_2=?,flags=? WHERE object_id=?"));
    }
    else
    {
-      hStmt = DBPrepare(hdb, _T("INSERT INTO auto_bind_target (object_bind_filter,object_bind_flag,object_unbind_flag,dci_bind_filter,dci_bind_flag,dci_unbind_flag,object_id) VALUES (?,?,?,?,?,?,?)"));
+      hStmt = DBPrepare(hdb, _T("INSERT INTO auto_bind_target (bind_filter_1,bind_filter_2,flags,object_id) VALUES (?,?,?,?)"));
    }
    if (hStmt != nullptr)
    {
       internalLock();
       DBBind(hStmt, 1, DB_SQLTYPE_TEXT, m_bindFilterSource, DB_BIND_STATIC);
-      DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, (isAutoBindEnabled() ?_T("1"):_T("0")), DB_BIND_STATIC);
-      DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, (isAutoUnbindEnabled() ?_T("1"):_T("0")), DB_BIND_STATIC);
-      DBBind(hStmt, 4, DB_SQLTYPE_TEXT, m_bindFilterSourceDCI, DB_BIND_STATIC);
-      DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, (isAutoBindDCIEnabled() ?_T("1"):_T("0")), DB_BIND_STATIC);
-      DBBind(hStmt, 6, DB_SQLTYPE_VARCHAR, (isAutoUnbindDCIEnabled() ?_T("1"):_T("0")), DB_BIND_STATIC);
-      DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, m_this->getId());
+      DBBind(hStmt, 2, DB_SQLTYPE_TEXT, m_bindFilterSourceDCI, DB_BIND_STATIC);
+      DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, m_autoBindFlags);
+      DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, m_this->getId());
       success = DBExecute(hStmt);
       internalUnlock();
       DBFreeStatement(hStmt);
