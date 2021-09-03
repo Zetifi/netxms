@@ -105,7 +105,6 @@ static bool H_UpgradeFromV68()
       _T("ALTER TABLE business_services ADD instance_method integer\n")
       _T("ALTER TABLE business_services ADD instance_data varchar(1023)\n")
       _T("ALTER TABLE business_services ADD instance_filter $SQL:TEXT\n")
-      _T("ALTER TABLE business_services ADD instance_filter $SQL:TEXT\n")
       _T("ALTER TABLE business_services ADD object_status_threshold integer\n")
       _T("ALTER TABLE business_services ADD dci_status_threshold integer\n")
       _T("UPDATE business_services SET instance_method=0,prototype_id=0,is_prototype='0',object_status_threshold=0,dci_status_threshold=0\n")
@@ -155,7 +154,7 @@ static bool H_UpgradeFromV68()
          {
             uint32_t linkId = DBGetFieldULong(linkUnderMainContainer, i, 0);
             TCHAR query[1024];
-            _sntprintf(query, 1024, _T("INSERT INTO business_services (service_id,is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter) VALUES (%d,'0',0,'',0,'','')"),
+            _sntprintf(query, 1024, _T("INSERT INTO business_services (service_id,is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter,object_status_threshold,dci_status_threshold) VALUES (%d,'0',0,'',0,'','',0,0)"),
                   linkId);
 
             if (!SQLQuery(query) && !g_ignoreErrors)
@@ -297,13 +296,9 @@ static bool H_UpgradeFromV68()
    if (slmCheckResult != nullptr)
    {
       int slmCheckCount = DBGetNumRows(slmCheckResult);
-      DB_STATEMENT hStmt = DBPrepare(g_dbHandle, _T("UPDATE slm_checks SET description=? WHERE id=?"), true);
-      if (hStmt != NULL)
+      for(int i = 0; i < slmCheckCount; i++)
       {
-         for(int i = 0; i < slmCheckCount; i++)
-         {
-            CHK_EXEC(BSCommonDeleteObject(DBGetFieldULong(slmCheckResult, i, 0)));
-         }
+         CHK_EXEC(BSCommonDeleteObject(DBGetFieldULong(slmCheckResult, i, 0)));
       }
       DBFreeResult(slmCheckResult);
    }
@@ -326,8 +321,8 @@ static bool H_UpgradeFromV68()
    DB_RESULT autoBindResult = SQLSelect(_T("SELECT object_id,bind_flag,unbind_flag FROM auto_bind_target"));
    if (autoBindResult != nullptr)
    {
-      int autoBindCount = DBGetNumRows(slmCheckResult);
-      DB_STATEMENT hStmt = DBPrepare(g_dbHandle, _T("UPDATE auto_bind_target SET flags=? WHERE id=?"), true);
+      int autoBindCount = DBGetNumRows(autoBindResult);
+      DB_STATEMENT hStmt = DBPrepare(g_dbHandle, _T("UPDATE auto_bind_target SET flags=? WHERE object_id=?"), true);
       if (hStmt != NULL)
       {
          for(int i = 0; i < autoBindCount; i++)
