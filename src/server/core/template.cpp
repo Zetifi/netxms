@@ -446,10 +446,11 @@ void Template::updateFromImport(ConfigEntry *config)
    uint32_t flags = config->getSubEntryValueAsUInt(_T("flags"), 0, 0);
    if (flags != 0)
    {
-      if (flags & AAF_AUTO_APPLY_1)
+      m_autoBindFlags = flags;
+      /*if (flags & AAF_AUTO_APPLY_1)
          m_autoBindFlag = true;
       if (flags & AAF_AUTO_REMOVE_1)
-         m_autoUnbindFlag = true;
+         m_autoUnbindFlag = true;*/
       m_flags &= !(AAF_AUTO_APPLY_1 | AAF_AUTO_REMOVE_1);
    }
 

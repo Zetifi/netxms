@@ -460,6 +460,8 @@ public class NXCPCodes
    public static final int CMD_BUSINESS_SERVICE_GET_CHECK_LIST = 0x01BB;
    public static final int CMD_BUSINESS_SERVICE_UPDATE_CHECK = 0x01BC;
    public static final int CMD_BUSINESS_SERVICE_DELETE_CHECK = 0x01BD;
+   public static final int CMD_GET_SLM_DATA = 0x01BE;
+   public static final int CMD_GET_SLM_TICKETS = 0x01BF;
 
 	// CMD_RS_ - Reporting Server related codes
 	public static final int CMD_RS_LIST_REPORTS = 0x1100;
@@ -1245,6 +1247,8 @@ public class NXCPCodes
    public static final long VID_DCI_AUTOBIND_FILTER = 775;
    public static final long VID_OBJECT_STATUS_THRESHOLD = 776;
    public static final long VID_DCI_STATUS_THRESHOLD = 777;
+   public static final long VID_BUSINESS_SERVICE_UPTIME = 778;
+   public static final long VID_SLM_TICKETS_COUNT = 779;
 
 	public static final long VID_ACL_USER_BASE = 0x00001000L;
 	public static final long VID_ACL_USER_LAST = 0x00001FFFL;
@@ -1357,4 +1361,5 @@ public class NXCPCodes
    public static final long VID_SSH_KEY_LIST_BASE = 0x10000000L;
    public static final long VID_2FA_METHOD_LIST_BASE = 0x10000000L;
    public static final long VID_SLM_CHECKS_LIST_BASE = 0x10000000L;
+   public static final long VID_SLM_TICKETS_LIST_BASE = 0x10000000L;
 }

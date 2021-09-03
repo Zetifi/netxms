@@ -1260,10 +1260,7 @@ protected:
    NXSL_Program *m_bindFilter;
    TCHAR *m_bindFilterSourceDCI;
    NXSL_Program *m_bindFilterDCI;
-   bool m_autoBindFlag;
-   bool m_autoUnbindFlag;
-   bool m_autoBindFlagDCI;
-   bool m_autoUnbindFlagDCI;
+   uint32_t m_autoBindFlags;
 
    void modifyFromMessage(NXCPMessage *request);
    void fillMessage(NXCPMessage *msg);
@@ -1275,18 +1272,27 @@ protected:
 
    void toJson(json_t *root);
    void createExportRecord(StringBuffer &str);
+   void setAutoBindFlag(bool value, uint32_t flag);
 
 public:
    AutoBindTarget(NetObj *_this);
    virtual ~AutoBindTarget();
 
-   AutoBindDecision isApplicable(const shared_ptr<DataCollectionTarget>& object);
-   bool isAutoBindEnabled() { return m_autoBindFlag; }
-   bool isAutoUnbindEnabled() { return m_autoBindFlag && m_autoUnbindFlag; }
+   AutoBindDecision isApplicable(const shared_ptr<NetObj>& object, shared_ptr<DCObject> dci = nullptr);
+   bool isAutoBindEnabled() { return m_autoBindFlags & AAF_AUTO_APPLY_1; }
+   bool isAutoUnbindEnabled() { return isAutoBindEnabled() && m_autoBindFlags & AAF_AUTO_REMOVE_1; }
    void setAutoBindFilter(const TCHAR *filter);
    void setAutoBindMode(bool doBind, bool doUnbind);
 
    const TCHAR *getAutoBindScriptSource() const { return m_bindFilterSource; }
+
+   //AutoBindDecision isApplicable(const shared_ptr<DataCollectionTarget>& object);   
+   bool isAutoBindDCIEnabled() { return m_autoBindFlags & AAF_AUTO_APPLY_2; }
+   bool isAutoUnbindDCIEnabled() { return isAutoBindDCIEnabled() && m_autoBindFlags & AAF_AUTO_REMOVE_2; }
+   void setAutoBindDCIFilter(const TCHAR *filter);
+   void setAutoBindDCIMode(bool doBind, bool doUnbind);
+
+   const TCHAR *getAutoBindDCIScriptSource() const { return m_bindFilterSourceDCI; }
 };
 
 /**
@@ -1391,8 +1397,8 @@ public:
    void setDCIModificationFlag() { lockProperties(); m_dciListModified = true; unlockProperties(); }
    void sendItemsToClient(ClientSession *pSession, UINT32 dwRqId) const;
    virtual HashSet<uint32_t> *getRelatedEventsList() const;
-   StringSet *getDCIScriptList() const;
-   IntegerArray<uint32_t> *getDCIIds();
+   unique_ptr<StringSet> getDCIScriptList() const;
+   unique_ptr<IntegerArray<uint32_t>> getDCIIds();
    bool isDataCollectionSource(UINT32 nodeId) const;
 
    virtual void applyDCIChanges(bool forcedChange);
@@ -4382,6 +4388,7 @@ public:
    virtual ~SlmCheck();
 
    int getType() { return m_type; }
+   void setType( int type ) { if ( type >= OBJECT && type <= DCI ) m_type = type; }
    const TCHAR* getScript() { return m_script; } 
    uint32_t getId() { return m_id; }
    void generateId();
@@ -4391,7 +4398,8 @@ public:
    void setRelatedDCI(uint32_t dci) { m_relatedDCI = dci; }
    uint32_t getCurrentTicket() { return m_currentTicket; }
    uint32_t getStatus() { return m_status; }
-   void setName( const TCHAR* name ) { _tcslcpy(m_name, name, 1023); }
+   void setName(const TCHAR* name) { _tcslcpy(m_name, name, 1023); }
+   void setThreshold(uint32_t threshold) { m_statusThreshold = threshold; }
 
    uint32_t execute();
 
@@ -4429,7 +4437,7 @@ public:
 /**
  * Business service object
  */
-class NXCORE_EXPORTABLE BaseBusinessService : public AbstractContainer
+class NXCORE_EXPORTABLE BaseBusinessService : public AbstractContainer, public AutoBindTarget
 {
   typedef AbstractContainer super;
 protected:
@@ -4440,12 +4448,14 @@ protected:
    bool m_pollingDisabled;
    time_t m_lastPollTime;
 
-   TCHAR *m_autobindDCIScript;
+   /*TCHAR *m_autobindDCIScript;
    bool m_autoBindDCIFlag;
    bool m_autoUnbindDCIFlag;
    TCHAR *m_autobindObjectScript;
    bool m_autoBindObjectFlag;
-   bool m_autoUnbindObjectFlag;
+   bool m_autoUnbindObjectFlag;*/
+   uint32_t m_objectStatusThreshhold;
+   uint32_t m_dciStatusThreshhold;
    uint32_t m_prototypeId;
    TCHAR *m_instance;
    uint32_t m_instanceDiscoveryMethod;
@@ -4467,10 +4477,6 @@ public:
    static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);
 
    void modifyCheckFromMessage(NXCPMessage *pRequest);
-
-   virtual bool readyForStatusPoll() = 0;
-   virtual bool readyForConfigurationPoll() = 0;
-   virtual bool readyForDiscoveryPoll() = 0;
 };
 
 /**
@@ -4482,21 +4488,24 @@ class NXCORE_EXPORTABLE BusinessService : public BaseBusinessService
 protected:
    PollState m_statusPollState;
    PollState m_configurationPollState;
-   NXSL_Program *m_pCompiledAutobindDCIScript;
-   NXSL_Program *m_pCompiledAutobindObjectScript;
 
    void updateSLMChecks();
+   MUTEX m_hPollerMutex;
    //uint32_t m_lastPollStatus;
 
    /*virtual void prepareForDeletion() override;*/
 
    //virtual void fillMessageInternal(NXCPMessage *pMsg, UINT32 userId) override;
-   void compileObjectBindingScript();
-   void compileDCIBindingScript();
    virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
 
    void objectCheckAutoBinding();
    void dciCheckAutoBinding();
+
+   void configurationPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
+   void statusPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
+
+   void _pollerLock() { MutexLock(m_hPollerMutex); }
+   void _pollerUnlock() { MutexUnlock(m_hPollerMutex); }
 
 public:
    BusinessService(const TCHAR *name);
@@ -4505,20 +4514,14 @@ public:
 
    virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; }
    void startForcedStatusPoll() { m_statusPollState.manualStart(); }
-   void statusPollWorkerEntry(PollerInfo *poller)  { statusPoll(poller, nullptr, 0); }
-   void statusPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
+   void statusPollWorkerEntry(PollerInfo *poller) { statusPollWorkerEntry(poller, nullptr, 0); }
+   void statusPollWorkerEntry(PollerInfo *poller, ClientSession *session, UINT32 rqId);
    void startForcedConfigurationPoll() { m_configurationPollState.manualStart(); }
-   void configurationPollWorkerEntry(PollerInfo *poller)  { configurationPoll(poller, nullptr, 0); }
-   void configurationPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
+   void configurationPollWorkerEntry(PollerInfo *poller) { configurationPollWorkerEntry(poller, nullptr, 0); }
+   void configurationPollWorkerEntry(PollerInfo *poller, ClientSession *session, UINT32 rqId);
 
-   bool isReadyForPolling();
-   void lockForPolling();
-   void poll(PollerInfo *poller);
-   void poll(ClientSession *pSession, UINT32 dwRqId, PollerInfo *poller);
-
-   virtual bool readyForStatusPoll() { return true; } //TODO: check conditions
-   virtual bool readyForConfigurationPoll() { return true; } //TODO: check conditions
-   virtual bool readyForDiscoveryPoll() { return false; }
+   bool lockForStatusPoll();
+   bool lockForConfigurationPoll();
 
    virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
 
@@ -4541,6 +4544,7 @@ protected:
    virtual uint32_t modifyFromMessageInternal(NXCPMessage *pRequest) override;
 
    void compileInstanceDiscoveryScript();
+   unique_ptr<StringList> getInstances();
 public:
    BusinessServicePrototype(const TCHAR *name, uint32_t method);
    BusinessServicePrototype();
@@ -4557,10 +4561,7 @@ public:
    void startForcedDiscoveryPoll() { m_discoveryPollState.manualStart(); }
    void instanceDiscoveryPollWorkerEntry(PollerInfo *poller) { instanceDiscoveryPoll(poller, nullptr, 0); }
    void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);
-
-   virtual bool readyForStatusPoll() { return false; }
-   virtual bool readyForConfigurationPoll() { return false; }
-   virtual bool readyForDiscoveryPoll() { return true; }  //TODO: check conditions
+   bool lockForDiscoveryPoll();
 };
 
 /**

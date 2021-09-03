@@ -30,7 +30,7 @@
 SlmCheck::SlmCheck(uint32_t serviceId)
 {
 	m_id = 0;
-	m_type = 0;
+	m_type = OBJECT;
 	m_script = NULL;
 	m_pCompiledScript = NULL;
 	m_reason[0] = 0;
@@ -95,7 +95,7 @@ void SlmCheck::loadFromSelect(DB_RESULT hResult, int row)
 {
 	m_id = DBGetFieldULong(hResult, row, 0);
 	m_serviceId = DBGetFieldULong(hResult, row, 1);
-	m_type = DBGetFieldULong(hResult, row, 2);
+	m_type = DBGetFieldLong(hResult, row, 2);
    DBGetField(hResult, row, 3, m_name, 1023);
 	m_relatedObject = DBGetFieldULong(hResult, row, 4);
 	m_relatedDCI = DBGetFieldULong(hResult, row, 5);

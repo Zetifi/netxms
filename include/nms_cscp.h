@@ -682,6 +682,8 @@ typedef struct
 #define CMD_BUSINESS_SERVICE_GET_CHECK_LIST 0x01BB
 #define CMD_BUSINESS_SERVICE_UPDATE_CHECK 0x01BC
 #define CMD_BUSINESS_SERVICE_DELETE_CHECK 0x01BD
+#define CMD_GET_SLM_DATA                  0x01BE
+#define CMD_GET_SLM_TICKETS               0x01BF
 
 #define CMD_RS_LIST_REPORTS               0x1100
 #define CMD_RS_GET_REPORT_DEFINITION      0x1101
@@ -1471,6 +1473,8 @@ typedef struct
 #define VID_DCI_AUTOBIND_FILTER     ((uint32_t)775)
 #define VID_OBJECT_STATUS_THRESHOLD ((uint32_t)776)
 #define VID_DCI_STATUS_THRESHOLD    ((uint32_t)777)
+#define VID_BUSINESS_SERVICE_UPTIME ((uint32_t)778)
+#define VID_SLM_TICKETS_COUNT       ((uint32_t)779)
 
 // Base variabe for single threshold in message
 #define VID_THRESHOLD_BASE          ((UINT32)0x00800000)
@@ -1714,6 +1718,8 @@ typedef struct
 #define VID_2FA_METHODS_LIST_BASE   ((uint32_t)0x10000000)
 
 #define VID_SLM_CHECKS_LIST_BASE   ((uint32_t)0x10000000)
+
+#define VID_SLM_TICKETS_LIST_BASE   ((uint32_t)0x10000000)
 
 #ifdef __cplusplus
 

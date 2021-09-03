@@ -899,6 +899,8 @@ private:
    void businessServiceGetCheckList(NXCPMessage *request);
    void businessServiceModifyCheck(NXCPMessage *request);
    void businessServiceDeleteCheck(NXCPMessage *request);
+   void getSLMData(NXCPMessage *request);
+   void getSLMTickets(NXCPMessage *request);
    void alarmUpdateWorker(Alarm *alarm);
    void sendActionDBUpdateMessage(NXCP_MESSAGE *msg);
    void sendObjectUpdates();

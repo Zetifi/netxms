@@ -1782,6 +1782,12 @@ void ClientSession::processRequest(NXCPMessage *request)
       case CMD_BUSINESS_SERVICE_DELETE_CHECK:
          businessServiceDeleteCheck(request);
          break;
+      case CMD_GET_SLM_DATA:
+         getSLMData(request);
+         break;
+      case CMD_GET_SLM_TICKETS:
+         getSLMTickets(request);
+         break;
       default:
          if ((code >> 8) == 0x11)
          {
@@ -6927,7 +6933,7 @@ void ClientSession::forcedNodePoll(NXCPMessage *pRequest)
       bool isValidNodePoll = object->getObjectClass() == OBJECT_NODE && (pollType == POLL_CONFIGURATION_FULL || pollType == POLL_TOPOLOGY || pollType == POLL_INTERFACE_NAMES);
       bool isValidDataCollectionTargetPoll = object->isDataCollectionTarget() && (pollType == POLL_STATUS || pollType == POLL_CONFIGURATION_NORMAL || pollType == POLL_INSTANCE_DISCOVERY);
       bool isValidBusinessServicePoll = object->getObjectClass() == OBJECT_BUSINESS_SERVICE && (pollType == POLL_STATUS || pollType == POLL_CONFIGURATION_NORMAL);
-      bool isValidBusinessServicePrototypePoll = object->getObjectClass() == OBJECT_BUSINESS_SERVICE && pollType == POLL_INSTANCE_DISCOVERY;
+      bool isValidBusinessServicePrototypePoll = object->getObjectClass() == OBJECT_BUSINESS_SERVICE_PROTOTYPE && pollType == POLL_INSTANCE_DISCOVERY;
       if (isValidNodePoll || isValidDataCollectionTargetPoll || isValidBusinessServicePoll || isValidBusinessServicePrototypePoll)
       {
          // Check access rights
@@ -7000,7 +7006,7 @@ void ClientSession::pollerThread(shared_ptr<NetObj> object, int pollType, uint32
          if (object->getObjectClass() == OBJECT_BUSINESS_SERVICE)
          {
             static_cast<BusinessService&>(*object).startForcedStatusPoll();
-            static_cast<BusinessService&>(*object).statusPoll(RegisterPoller(PollerType::STATUS, object), this, requestId);
+            static_cast<BusinessService&>(*object).statusPollWorkerEntry(RegisterPoller(PollerType::STATUS, object), this, requestId);
          }
          else
          {
@@ -7016,7 +7022,7 @@ void ClientSession::pollerThread(shared_ptr<NetObj> object, int pollType, uint32
          if (object->getObjectClass() == OBJECT_BUSINESS_SERVICE)
          {
             static_cast<BusinessService&>(*object).startForcedConfigurationPoll();
-            static_cast<BusinessService&>(*object).configurationPoll(RegisterPoller(PollerType::CONFIGURATION, object), this, requestId);
+            static_cast<BusinessService&>(*object).configurationPollWorkerEntry(RegisterPoller(PollerType::CONFIGURATION, object), this, requestId);
          }
          else
          {
@@ -9922,13 +9928,12 @@ void ClientSession::getDCIScriptList(NXCPMessage *request)
       {
          if (object->isDataCollectionTarget() || (object->getObjectClass() == OBJECT_TEMPLATE))
          {
-            StringSet *scripts = static_cast<DataCollectionOwner&>(*object).getDCIScriptList();
+            unique_ptr<StringSet> scripts = static_cast<DataCollectionOwner&>(*object).getDCIScriptList();
             msg.setField(VID_NUM_SCRIPTS, (INT32)scripts->size());
             ScriptNamesCallbackData data;
             data.msg = &msg;
             data.fieldId = VID_SCRIPT_LIST_BASE;
             scripts->forEach(ScriptNamesCallback, &data);
-            delete scripts;
             msg.setField(VID_RCC, RCC_SUCCESS);
          }
          else
@@ -16033,7 +16038,8 @@ void ClientSession::businessServiceModifyCheck(NXCPMessage *request)
    sendMessage(&msg);
 }
 
-
+double GetServiceUptime(uint32_t serviceId, time_t from, time_t to);
+void GetServiceTickets(uint32_t serviceId, time_t from, time_t to, NXCPMessage* msg);
 /**
  *
  */
@@ -16054,3 +16060,75 @@ void ClientSession::businessServiceDeleteCheck(NXCPMessage *request)
    sendMessage(&msg);
 }
 
+void ClientSession::getSLMData(NXCPMessage *request)
+{
+   NXCPMessage msg(CMD_REQUEST_COMPLETED, request->getId());
+   uint32_t userId = request->getFieldAsUInt32(VID_USER_ID);
+   if ((userId == m_dwUserId) || (m_systemAccessRights & SYSTEM_ACCESS_MANAGE_USERS))
+   {
+      if (request->isFieldExist(VID_OBJECT_ID))
+      {
+         uint32_t serviceId = request->getFieldAsUInt32(VID_OBJECT_ID);
+         time_t from = 0;
+         if (request->isFieldExist(VID_TIME_FROM))
+         {
+            from = request->getFieldAsUInt64(VID_TIME_FROM);
+         }
+         time_t to = time(nullptr);
+         if (request->isFieldExist(VID_TIME_TO))
+         {
+            to = request->getFieldAsUInt64(VID_TIME_TO);
+         }
+
+         msg.setField(VID_BUSINESS_SERVICE_UPTIME, GetServiceUptime(serviceId, from, to));
+         msg.setField(VID_RCC, RCC_SUCCESS);
+      }
+      else
+      {
+         msg.setField(VID_RCC, RCC_INVALID_REQUEST);
+      }
+   }
+   else
+   {
+      TCHAR buffer[MAX_USER_NAME];
+      writeAuditLog(AUDIT_SECURITY, false, 0, _T("Access denied on Get SLM data method for user \"%s\""), ResolveUserId(userId, buffer, true));
+      msg.setField(VID_RCC, RCC_ACCESS_DENIED);
+   }
+   sendMessage(&msg);
+}
+
+void ClientSession::getSLMTickets(NXCPMessage *request)
+{
+   NXCPMessage msg(CMD_REQUEST_COMPLETED, request->getId());
+   uint32_t userId = request->getFieldAsUInt32(VID_USER_ID);
+   if ((userId == m_dwUserId) || (m_systemAccessRights & SYSTEM_ACCESS_MANAGE_USERS))
+   {
+      if (request->isFieldExist(VID_OBJECT_ID))
+      {
+         uint32_t serviceId = request->getFieldAsUInt32(VID_OBJECT_ID);
+         time_t from = 0;
+         if (request->isFieldExist(VID_TIME_FROM))
+         {
+            from = request->getFieldAsUInt64(VID_TIME_FROM);
+         }
+         time_t to = time(nullptr);
+         if (request->isFieldExist(VID_TIME_TO))
+         {
+            to = request->getFieldAsUInt64(VID_TIME_TO);
+         }
+         GetServiceTickets(serviceId, from, to, &msg);
+         msg.setField(VID_RCC, RCC_SUCCESS);
+      }
+      else
+      {
+         msg.setField(VID_RCC, RCC_INVALID_REQUEST);
+      }
+   }
+   else
+   {
+      TCHAR buffer[MAX_USER_NAME];
+      writeAuditLog(AUDIT_SECURITY, false, 0, _T("Access denied on Get SLM checks method for user \"%s\""), ResolveUserId(userId, buffer, true));
+      msg.setField(VID_RCC, RCC_ACCESS_DENIED);
+   }
+   sendMessage(&msg);
+}

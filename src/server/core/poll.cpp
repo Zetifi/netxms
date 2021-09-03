@@ -795,18 +795,23 @@ static void QueueForPolling(NetObj *object, void *data)
 			break;
 		case OBJECT_BUSINESS_SERVICE:
 			{
-				auto service = static_cast<BaseBusinessService*>(object);
-            if (service->readyForStatusPoll())
+				auto service = static_cast<BusinessService*>(object);
+            if (service->lockForStatusPoll())
             {
                nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 6, _T("Business service %d \"%s\" queued for status poll"), (int)object->getId(), object->getName());
 					ThreadPoolExecuteSerialized(g_pollerThreadPool, threadKey, static_cast<BusinessService*>(service), &BusinessService::statusPollWorkerEntry, RegisterPoller(PollerType::STATUS, service->self()));
             }
-            if (service->readyForConfigurationPoll())
+            if (service->lockForConfigurationPoll())
             {
                nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 6, _T("Business service %d \"%s\" queued for configuration poll"), (int)object->getId(), object->getName());
 					ThreadPoolExecuteSerialized(g_pollerThreadPool, threadKey, static_cast<BusinessService*>(service), &BusinessService::configurationPollWorkerEntry, RegisterPoller(PollerType::CONFIGURATION, service->self()));
             }
-            if (service->readyForDiscoveryPoll())
+			}
+			break;
+      case OBJECT_BUSINESS_SERVICE_PROTOTYPE:
+			{
+				auto service = static_cast<BusinessServicePrototype*>(object);
+            if (service->lockForDiscoveryPoll())
             {
                nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 6, _T("Business service prototype %d \"%s\" queued for instance discovery poll"), (int)object->getId(), object->getName());
 					ThreadPoolExecuteSerialized(g_pollerThreadPool, threadKey, static_cast<BusinessServicePrototype*>(service), &BusinessServicePrototype::instanceDiscoveryPollWorkerEntry, RegisterPoller(PollerType::INSTANCE_DISCOVERY, service->self()));
