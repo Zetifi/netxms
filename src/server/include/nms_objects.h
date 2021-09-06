@@ -4410,6 +4410,7 @@ public:
    uint32_t getCurrentTicket() { return m_currentTicket; }
    uint32_t getStatus() { return m_status; }
    void setName(const TCHAR* name) { _tcslcpy(m_name, name, 1023); }
+   const TCHAR* getName() { return m_name; } const
    void setThreshold(uint32_t threshold) { m_statusThreshold = threshold; }
 
    uint32_t execute(SlmTicketData* ticket);
@@ -4524,6 +4525,8 @@ public:
    virtual ~BusinessService();
 
    virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; }
+   uint32_t getPrototypeId() { return m_prototypeId; }
+   const TCHAR* getInstance() { return m_instance; } const
    void startForcedStatusPoll() { m_statusPollState.manualStart(); }
    void statusPollWorkerEntry(PollerInfo *poller) { statusPollWorkerEntry(poller, nullptr, 0); }
    void statusPollWorkerEntry(PollerInfo *poller, ClientSession *session, UINT32 rqId);
@@ -4557,6 +4560,10 @@ protected:
 
    void compileInstanceDiscoveryScript();
    unique_ptr<StringList> getInstances();
+   unique_ptr<SharedObjectArray<BusinessService>> getServices();
+   void deleteBusinessService(shared_ptr<BusinessService> service);
+   void createBusinessService(const TCHAR* intance);
+
 public:
    BusinessServicePrototype(const TCHAR *name, uint32_t method);
    BusinessServicePrototype();
@@ -4569,7 +4576,7 @@ public:
    virtual bool deleteFromDatabase(DB_HANDLE hdb) override;*/
 
    
-
+   
    void startForcedDiscoveryPoll() { m_discoveryPollState.manualStart(); }
    void instanceDiscoveryPollWorkerEntry(PollerInfo *poller) { instanceDiscoveryPoll(poller, nullptr, 0); }
    void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId);

@@ -387,11 +387,13 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
 {
    if (IsShutdownInProgress())
    {
+      sendPollerMsg(_T("Server shutdown in progress, poll canceled \r\n"));
       m_busy = false;
       return;
    }
 
 	nxlog_debug_tag(DEBUG_TAG, 5, _T("Started polling of business service %s [%d]"), m_name, (int)m_id);
+   sendPollerMsg(_T("Started status poll of business service %s [%d] \r\n"), m_name, (int)m_id);
 	m_lastPollTime = time(nullptr);
 
 	// Loop through the kids and execute their either scripts or thresholds
@@ -417,9 +419,15 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
          }
       }
       if (oldStatus != newStatus)
+      {
+         sendPollerMsg(_T("SLM check \"%s\" status changed, set to: %s\r\n"), check->getName(), newStatus == STATUS_CRITICAL ? _T("Critical") : newStatus == STATUS_NORMAL ? _T("Normal") : _T("Unknown"));
       	NotifyClientsOnSlmCheckUpdate(*this, check);
+      }
       if (newStatus > m_status)
+      {
+         sendPollerMsg(_T("Business service status changed, set to: %s\r\n"), newStatus == STATUS_CRITICAL ? _T("Critical") : newStatus == STATUS_NORMAL ? _T("Normal") : _T("Unknown"));
          m_status = newStatus;
+      }
 	}
 
 	//m_lastPollStatus = m_status;
@@ -940,35 +948,59 @@ unique_ptr<StringList> BusinessServicePrototype::getInstances()
    return unique_ptr<StringList>(instances);
 }
 
+unique_ptr<SharedObjectArray<BusinessService>> BusinessServicePrototype::getServices()
+{
+   unique_ptr<SharedObjectArray<BusinessService>> services = make_unique<SharedObjectArray<BusinessService>>();
+   unique_ptr<SharedObjectArray<NetObj>> objects = g_idxObjectById.getObjects();
+   for (int i = 0; i < objects->size(); i++)
+   {
+      shared_ptr<NetObj> object = objects->getShared(i);
+      if (object != nullptr && object->getObjectClass() == OBJECT_BUSINESS_SERVICE && static_pointer_cast<BusinessService>(object)->getPrototypeId() == m_id)
+      {
+         services->add(static_pointer_cast<BusinessService>(object));
+      }
+   }
+   return services;
+}
+
+void BusinessServicePrototype::deleteBusinessService(shared_ptr<BusinessService> service)
+{
+
+}
+
+void BusinessServicePrototype::createBusinessService(const TCHAR* intance)
+{
+
+}
+
 void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
    poller->startExecution();
    unique_ptr<StringList> instances = getInstances();
-   /*ObjectArray<BaseBusinessService>* services = getServices();
+   unique_ptr<SharedObjectArray<BusinessService>> services = getServices();
    if (instances != nullptr && services != nullptr)
    {
-      ObjectArray<BaseBusinessService> services = getServices();
-      for (auto it = services.begin(); it.hasNext(); it++)
+      for (auto it = services->begin(); it.hasNext(); )
       {
          int index = instances->indexOf(it.next()->getInstance());
-         if (index >= 0)
+         if(index >= 0)
          {
-            instances->remove(index);
             it.remove();
+            instances->remove(index);
          }
-         
       }
    }
 
-   for (auto service : *services)
+   for (auto it = services->begin(); it.hasNext(); )
    {
-      deleteBusinessService(service);
+      deleteBusinessService(it.next());
+      it.remove();
    }
 
-   for (auto inst : *instances)
+   for (int i = 0; i < instances->size(); i++ )
    {
-      createBusinessService(inst);
-   }*/
+      createBusinessService(instances->get(i));
+   }
 
    delete poller;
 }
