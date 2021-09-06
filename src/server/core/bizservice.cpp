@@ -401,8 +401,21 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
 
 	for (auto check : m_checks)
 	{
+      SlmTicketData data = {};
       uint32_t oldStatus = check->getStatus();
-      uint32_t newStatus = check->execute();
+      uint32_t newStatus = check->execute(&data);
+
+      if(data.ticket_id != 0)
+      {
+         unique_ptr<SharedObjectArray<NetObj>> parents = getParents();
+         for( auto parent : *parents )
+         {
+            if(parent->getObjectClass() == OBJECT_BUSINESS_SERVICE)
+            {
+               static_pointer_cast<BusinessService>(parent)->addChildTicket(&data);
+            }
+         }
+      }
       if (oldStatus != newStatus)
       	NotifyClientsOnSlmCheckUpdate(*this, check);
       if (newStatus > m_status)
@@ -412,6 +425,34 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
 	//m_lastPollStatus = m_status;
 	nxlog_debug_tag(DEBUG_TAG, 5, _T("Finished status polling of business service %s [%d]"), m_name, (int)m_id);
 	m_busy = false;
+}
+
+void BusinessService::addChildTicket(SlmTicketData *data)
+{
+   unique_ptr<SharedObjectArray<NetObj>> parents = getParents();
+   for( auto parent : *parents )
+   {
+      if(parent->getObjectClass() == OBJECT_BUSINESS_SERVICE)
+      {
+         static_pointer_cast<BusinessService>(parent)->addChildTicket(data);
+      }
+   }
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("INSERT INTO slm_tickets (ticket_id,original_ticket_id,original_service_id,check_id,check_description,service_id,create_timestamp,close_timestamp,reason) VALUES (?,?,?,?,?,?,?,0,?)"));
+	if (hStmt != NULL)
+	{
+		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, CreateUniqueId(IDG_SLM_TICKET));
+		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, data->ticket_id);
+      DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, data->service_id);
+      DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, data->check_id);
+		DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, data->description, DB_BIND_TRANSIENT);
+		DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, m_id);
+		DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, (uint32_t)(data->create_timestamp));
+		DBBind(hStmt, 8, DB_SQLTYPE_VARCHAR, data->reason, DB_BIND_TRANSIENT);
+		DBExecute(hStmt);
+		DBFreeStatement(hStmt);
+	}
 }
 
 void BusinessService::configurationPollWorkerEntry(PollerInfo *poller, ClientSession *session, UINT32 rqId)

@@ -123,14 +123,18 @@ static bool H_UpgradeFromV68()
    //SLM Checks
    static const TCHAR *slmCheckBatch =
       _T("ALTER TABLE slm_checks ADD service_id integer\n")
+      _T("ALTER TABLE slm_checks ADD original_ticket_id integer\n")
+      _T("ALTER TABLE slm_checks ADD original_service_id integer\n")
       _T("ALTER TABLE slm_checks ADD related_object integer\n")
       _T("ALTER TABLE slm_checks ADD related_dci integer\n")
       _T("ALTER TABLE slm_checks ADD status_threshold integer\n")
       _T("ALTER TABLE slm_checks ADD description varchar(1023)\n")
-      _T("UPDATE slm_checks SET service_id=0,related_object=0,related_dci=0,status_threshold=0\n") //Threshold is default - from server configuration
+      _T("UPDATE slm_checks SET service_id=0,original_ticket_id=0,original_service_id=0,related_object=0,related_dci=0,status_threshold=0\n") //Threshold is default - from server configuration
       _T("<END>");
    CHK_EXEC(SQLBatch(slmCheckBatch));
    CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("service_id")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("original_ticket_id")));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("original_service_id")));
    CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("related_object")));
    CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("related_dci")));
    CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_checks"), _T("status_threshold")));

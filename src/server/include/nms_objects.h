@@ -4358,6 +4358,17 @@ public:
    virtual bool showThresholdSummary() const override;
 };
 
+typedef struct{
+   uint32_t ticket_id;
+   uint32_t check_id;
+   TCHAR description[1023];
+   uint32_t service_id;
+   time_t create_timestamp;
+   TCHAR reason[256];
+} SlmTicketData;
+
+
+
 /**
  * SLM check object
  */
@@ -4377,7 +4388,7 @@ protected:
    int m_statusThreshold;
    uint32_t m_serviceId;
 
-   bool insertTicket();
+   bool insertTicket(SlmTicketData* ticket);
    void closeTicket();
    void compileScript();
    NXSL_Value *getNodeObjectForNXSL(NXSL_VM *vm);
@@ -4401,7 +4412,7 @@ public:
    void setName(const TCHAR* name) { _tcslcpy(m_name, name, 1023); }
    void setThreshold(uint32_t threshold) { m_statusThreshold = threshold; }
 
-   uint32_t execute();
+   uint32_t execute(SlmTicketData* ticket);
 
    void modifyFromMessage(NXCPMessage *pRequest);
    void loadFromSelect(DB_RESULT hResult, int row);
@@ -4525,6 +4536,7 @@ public:
 
    virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
 
+   void addChildTicket(SlmTicketData* data);
 };
 
 /**

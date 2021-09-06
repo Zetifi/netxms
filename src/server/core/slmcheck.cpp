@@ -291,7 +291,7 @@ bool SlmCheck::deleteFromDatabase()
 /**
  * Execute check
  */
-uint32_t SlmCheck::execute()
+uint32_t SlmCheck::execute(SlmTicketData* ticket)
 {
 	uint32_t oldStatus = m_status;
 	switch (m_type)
@@ -369,7 +369,7 @@ uint32_t SlmCheck::execute()
 	if (m_status != oldStatus)
 	{
 		if (m_status == STATUS_CRITICAL)
-			insertTicket();
+			insertTicket(ticket);
 		else
 			closeTicket();
 	}
@@ -379,7 +379,7 @@ uint32_t SlmCheck::execute()
 /**
  * Insert ticket for this check into slm_tickets
  */
-bool SlmCheck::insertTicket()
+bool SlmCheck::insertTicket(SlmTicketData* ticket)
 {
 	nxlog_write_tag(4, DEBUG_TAG, _T("SlmCheck::insertTicket() called for %s [%d], reason='%s'"), m_name, (int)m_id, m_reason);
 
@@ -389,26 +389,38 @@ bool SlmCheck::insertTicket()
 	m_currentTicket = CreateUniqueId(IDG_SLM_TICKET);
 
 	bool success = false;
+	time_t currentTime = time(nullptr);
 	DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("INSERT INTO slm_tickets (ticket_id,check_id,service_id,create_timestamp,close_timestamp,reason) VALUES (?,?,?,?,0,?)"));
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("INSERT INTO slm_tickets (ticket_id,original_ticket_id,original_service_id,check_id,check_description,service_id,create_timestamp,close_timestamp,reason) VALUES (?,0,0,?,?,?,?,0,?)"));
 	if (hStmt != NULL)
 	{
 		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_currentTicket);
 		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_id);
-		DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, m_serviceId);
-		DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, (UINT32)time(NULL));
-		DBBind(hStmt, 5, DB_SQLTYPE_VARCHAR, m_reason, DB_BIND_TRANSIENT);
+		DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, m_name, DB_BIND_TRANSIENT);
+		DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, m_serviceId);
+		DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, (uint32_t)currentTime);
+		DBBind(hStmt, 6, DB_SQLTYPE_VARCHAR, m_reason, DB_BIND_TRANSIENT);
 		success = DBExecute(hStmt) ? true : false;
 		DBFreeStatement(hStmt);
 	}
 
-	hStmt = DBPrepare(hdb, _T("UPDATE slm_checks SET current_ticket=? WHERE id=?"));
-	if (hStmt != NULL)
+	if (success)
 	{
-		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_currentTicket);
-		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_id);
-		success = DBExecute(hStmt) ? true : false;
-		DBFreeStatement(hStmt);
+		ticket->ticket_id = m_currentTicket;
+		ticket->check_id = m_id;
+		_tcslcpy(ticket->description, m_name, 1023);
+		ticket->service_id = m_serviceId;
+		ticket->create_timestamp = currentTime;
+		_tcslcpy(ticket->reason, m_reason, 256);
+
+		hStmt = DBPrepare(hdb, _T("UPDATE slm_checks SET current_ticket=? WHERE id=?"));
+		if (hStmt != NULL)
+		{
+			DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_currentTicket);
+			DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_id);
+			success = DBExecute(hStmt) ? true : false;
+			DBFreeStatement(hStmt);
+		}
 	}
 
 	DBConnectionPoolReleaseConnection(hdb);
@@ -422,14 +434,16 @@ void SlmCheck::closeTicket()
 {
 	nxlog_write_tag(4, DEBUG_TAG, _T("SlmCheck::closeTicket() called for %s [%d], ticketId=%d"), m_name, (int)m_id, (int)m_currentTicket);
 	DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
-	DB_STATEMENT hStmt = DBPrepare(hdb, _T("UPDATE slm_tickets SET close_timestamp=? WHERE ticket_id=?"));
+	DB_STATEMENT hStmt = DBPrepare(hdb, _T("UPDATE slm_tickets SET close_timestamp=? WHERE ticket_id=? OR original_ticket_id=?"));
 	if (hStmt != NULL)
 	{
 		DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, (UINT32)time(NULL));
 		DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_currentTicket);
+		DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, m_currentTicket);
 		DBExecute(hStmt);
 		DBFreeStatement(hStmt);
 	}
+
 	DBConnectionPoolReleaseConnection(hdb);
 	m_currentTicket = 0;
 	m_reason[0] = 0;
