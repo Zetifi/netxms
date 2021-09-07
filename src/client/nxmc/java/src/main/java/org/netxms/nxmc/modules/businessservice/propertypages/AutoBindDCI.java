@@ -34,6 +34,8 @@ import org.netxms.client.NXCSession;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.BusinessService;
 import org.netxms.client.objects.GenericObject;
+import org.netxms.client.objects.interfaces.AutoBindDCIObject;
+import org.netxms.client.objects.interfaces.AutoBindObject;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -169,8 +171,11 @@ public class AutoBindDCI extends ObjectPropertyPage
 		
 		final NXCSession session =  Registry.getSession();
 		final NXCObjectModificationData md = new NXCObjectModificationData(((GenericObject)businessService).getObjectId());
-		md.setDciAutoBindFilter(filterSource.getText());
-      md.setDciAutoBindFlags(apply, remove);
+		md.setAutoBindFilter2(filterSource.getText());      
+		int flags = businessService.getAutoBindFlags();
+      flags = apply ? flags | AutoBindDCIObject.DCI_BIND_FLAG : flags & ~AutoBindDCIObject.DCI_BIND_FLAG;  
+      flags = remove ? flags | AutoBindObject.OBJECT_UNBIND_FLAG : flags & ~AutoBindObject.OBJECT_UNBIND_FLAG;  
+      md.setAutoBindFlags(flags);
       md.setDciStatusThreshold(thresholdCombo.getSelectionIndex());
 		
 		new Job(i18n.tr("Update auto-bind filter"), null, null) {
@@ -178,9 +183,9 @@ public class AutoBindDCI extends ObjectPropertyPage
 			protected void run(IProgressMonitor monitor) throws Exception
 			{
 				session.modifyObject(md);
-		      initialBind = md.isDciAutoBindEnabled();
-		      initialUnbind = md.isDciAutoUnbindEnabled();
-				initialAutoBindFilter = md.getDciAutoBindFilter();
+		      initialBind = apply;
+		      initialUnbind = remove;
+				initialAutoBindFilter = md.getAutoBindFilter2();
             initialStatusThreshold = md.getDciStatusThreshold();
 			}
 

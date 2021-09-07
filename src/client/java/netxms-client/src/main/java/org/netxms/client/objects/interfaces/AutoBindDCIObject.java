@@ -23,6 +23,9 @@ package org.netxms.client.objects.interfaces;
  */
 public interface AutoBindDCIObject
 {   
+   final static int DCI_BIND_FLAG = 4;
+   final static int DCI_UNBIND_FLAG = 8;
+   
    /**
     * @return true if automatic bind is enabled
     */
