@@ -7031,7 +7031,7 @@ void ClientSession::pollerThread(shared_ptr<NetObj> object, int pollType, uint32
          }
          break;
       case POLL_INSTANCE_DISCOVERY:
-         if (object->getObjectClass() == OBJECT_BUSINESS_SERVICE)
+         if (object->getObjectClass() == OBJECT_BUSINESS_SERVICE_PROTOTYPE)
          {
             static_cast<BusinessServicePrototype&>(*object).startForcedDiscoveryPoll();
             static_cast<BusinessServicePrototype&>(*object).instanceDiscoveryPoll(RegisterPoller(PollerType::INSTANCE_DISCOVERY, object), this, requestId);

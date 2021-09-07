@@ -2009,7 +2009,7 @@ BOOL LoadObjects()
 
    // Loading business service objects
    DbgPrintf(2, _T("Loading business services..."));
-   _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("SELECT id FROM object_containers WHERE object_class=%d"), OBJECT_BUSINESS_SERVICE); //FIXME: add prototypes
+   _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("SELECT id FROM object_containers WHERE object_class=%d OR object_class=%d"), OBJECT_BUSINESS_SERVICE, OBJECT_BUSINESS_SERVICE_PROTOTYPE); //FIXME: add prototypes
    hResult = DBSelect(hdb, query);
    if (hResult != nullptr)
    {

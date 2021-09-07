@@ -276,7 +276,7 @@ bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
       return false;
    if (!AutoBindTarget::loadFromDatabase(hdb, id))
       return false;
-
+   nxlog_debug_tag(DEBUG_TAG, 4, _T("Business service %s [%ld] loaded successfully"), m_name, (long)id);
    return true;
 }
 
@@ -923,7 +923,7 @@ void BusinessServicePrototype::compileInstanceDiscoveryScript()
 	if (m_pCompiledInstanceDiscoveryScript != nullptr)
 		delete m_pCompiledInstanceDiscoveryScript;
    m_pCompiledInstanceDiscoveryScript = NXSLCompile(m_instanceDiscoveryData, errorMsg, errorMsgLen, nullptr);
-   if (m_pCompiledInstanceDiscoveryScript != nullptr)
+   if (m_pCompiledInstanceDiscoveryScript == nullptr)
    {
       nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service instance discovery %s [%u] (%s)"), m_name, m_id, errorMsg);
    }
@@ -932,7 +932,7 @@ void BusinessServicePrototype::compileInstanceDiscoveryScript()
 void BusinessServicePrototype::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
 {
    msg->setField(VID_INSTD_METHOD, m_instanceDiscoveryMethod);
-   msg->setField(VID_INSTD_FILTER, m_instanceDiscoveryData);
+   msg->setField(VID_INSTD_DATA, m_instanceDiscoveryData);
    super::fillMessageInternal(msg, userId);
 }
 
