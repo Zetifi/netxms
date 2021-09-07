@@ -51,6 +51,10 @@ static bool BSCommonDeleteObject(uint32_t id)
    if (!SQLQuery(query) && !g_ignoreErrors)
       return false;
 
+   _sntprintf(query, 1024,  _T("DELETE FROM slm_service_history WHERE service_id=%d"), id);
+   if (!SQLQuery(query) && !g_ignoreErrors)
+      return false;
+
    TCHAR table[256];
    _sntprintf(table, 256, _T("gps_history_%u"), id);
    int rc = DBIsTableExist(g_dbHandle, table);
@@ -241,7 +245,7 @@ static bool H_UpgradeFromV68()
       _T("ALTER TABLE slm_tickets ADD check_description varchar(1023)\n")
       _T("ALTER TABLE slm_tickets ADD original_ticket_id integer\n")
       _T("ALTER TABLE slm_tickets ADD original_service_id integer\n")
-      _T("UPDATE slm_checks SET original_ticket_id=0,original_service_id=0\n")
+      _T("UPDATE slm_tickets SET original_ticket_id=0,original_service_id=0\n")
       _T("<END>");
    CHK_EXEC(SQLBatch(slmTicketBatch));
    CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, _T("slm_tickets"), _T("original_ticket_id")));
@@ -319,6 +323,105 @@ static bool H_UpgradeFromV68()
    //Update node links type that were converted to business services
    CHK_EXEC(SQLQuery(_T("UPDATE object_containers SET object_class=28 where object_class=29")));
 
+   //Delete status for business service root
+   TCHAR query[1024];
+   _sntprintf(query, 1024,  _T("DELETE FROM slm_service_history WHERE service_id=%d"), 9);
+   if (!SQLQuery(query) && !g_ignoreErrors)
+      return false;
+
+   //slm service history
+   CHK_EXEC(CreateTable(
+               _T("CREATE TABLE slm_service_downtime (")
+               _T("   record_id integer not null,")
+               _T("   service_id integer not null,")
+               _T("   from_timestamp integer not null,")
+               _T("   to_timestamp integer not null,")
+               _T("PRIMARY KEY(record_id))")));
+   DB_RESULT slmHistoryResult = SQLSelect(_T("SELECT service_id,change_timestamp,new_status FROM slm_service_history ORDER BY service_id, change_timestamp"));
+   if (slmHistoryResult != nullptr)
+   {
+      DB_STATEMENT hStmtInsert = DBPrepare(g_dbHandle, _T("INSERT INTO slm_service_downtime (record_id,service_id,from_timestamp,to_timestamp) VALUES (?,?,?,?)"), true);
+      if (hStmtInsert != nullptr)
+      {
+         int slmHistoryCount = DBGetNumRows(slmHistoryResult);
+         if (slmHistoryCount > 0)
+         {
+            int periodStartTimestamp = 0;
+            int periodEndTimestamp = 0;
+            uint32_t serviceId = DBGetFieldLong(slmHistoryResult, 0, 0);
+            DBBind(hStmtInsert, 2, DB_SQLTYPE_INTEGER, serviceId);
+            int i = 0;
+            for(; i < slmHistoryCount; i++)
+            {
+               if (serviceId == DBGetFieldLong(slmHistoryResult, i, 0))
+               {
+                  if (periodStartTimestamp == 0)
+                  {
+                     if (DBGetFieldLong(slmHistoryResult, i, 2) == STATUS_CRITICAL)
+                     {
+                        periodStartTimestamp = DBGetFieldLong(slmHistoryResult, i, 1);
+                     }
+                     continue;
+                  }
+
+                  if (DBGetFieldLong(slmHistoryResult, i, 2) < STATUS_CRITICAL)
+                  {
+                     periodEndTimestamp = DBGetFieldLong(slmHistoryResult, i, 1);
+                  }
+                  else
+                     continue;
+               }
+
+               if (periodStartTimestamp != 0)
+               {
+                  DBBind(hStmtInsert, 1, DB_SQLTYPE_INTEGER, i+1);
+                  DBBind(hStmtInsert, 3, DB_SQLTYPE_INTEGER, periodStartTimestamp);
+                  DBBind(hStmtInsert, 4, DB_SQLTYPE_INTEGER, periodEndTimestamp);
+                  if (!SQLExecute(hStmtInsert) && !g_ignoreErrors)
+                  {
+                     DBFreeStatement(hStmtInsert);
+                     return false;
+                  }
+                  periodStartTimestamp = 0;
+                  periodEndTimestamp = 0;
+               }
+
+               if (serviceId != DBGetFieldLong(slmHistoryResult, i, 0))
+               {
+                  serviceId = DBGetFieldLong(slmHistoryResult, i, 0);
+                  DBBind(hStmtInsert, 2, DB_SQLTYPE_INTEGER, serviceId);
+               }
+            }
+
+            if (periodStartTimestamp != 0)
+            {
+               DBBind(hStmtInsert, 1, DB_SQLTYPE_INTEGER, i+1);
+               DBBind(hStmtInsert, 3, DB_SQLTYPE_INTEGER, periodStartTimestamp);
+               DBBind(hStmtInsert, 4, DB_SQLTYPE_INTEGER, periodEndTimestamp);
+               if (!SQLExecute(hStmtInsert) && !g_ignoreErrors)
+               {
+                  DBFreeStatement(hStmtInsert);
+                  return false;
+               }
+               periodStartTimestamp = 0;
+               periodEndTimestamp = 0;
+            }
+         }
+
+         DBFreeStatement(hStmtInsert);
+      }
+      else if (!g_ignoreErrors)
+      {
+         return false;
+      }
+      DBFreeResult(slmHistoryResult);
+   }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
+   CHK_EXEC(SQLQuery(_T("DROP TABLE slm_service_history")));
+
    //Update auto apply table
    static const TCHAR *autoBindBatch =
       _T("ALTER TABLE auto_bind_target ADD bind_filter_2 $SQL:TEXT\n")
@@ -359,6 +462,8 @@ static bool H_UpgradeFromV68()
    {
       return false;
    }
+   CHK_EXEC(DBDropColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_flag")));
+   CHK_EXEC(DBDropColumn(g_dbHandle, _T("auto_bind_target"), _T("unbind_flag")));
 
    CHK_EXEC(SetMinorSchemaVersion(69));
    return true;
