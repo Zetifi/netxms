@@ -66,6 +66,11 @@ BaseBusinessService::BaseBusinessService(const TCHAR* name) : m_checks(10, 10, O
    m_dciStatusThreshhold = 0;
 }
 
+BaseBusinessService::~BaseBusinessService()
+{
+   MemFree(m_instance);
+}
+
 /**
  * Load SLM checks from database
  */
@@ -286,7 +291,7 @@ bool BaseBusinessService::saveToDatabase(DB_HANDLE hdb)
 	}
 	else
 	{
-		hStmt = DBPrepare(hdb, _T("INSERT INTO business_services (is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter,service_id,object_status_threshold,dci_status_threshold) VALUES (?,?,?,?,?,?,?,?,?)"));
+		hStmt = DBPrepare(hdb, _T("INSERT INTO business_services (is_prototype,prototype_id,instance,instance_method,instance_data,instance_filter,object_status_threshold,dci_status_threshold,service_id) VALUES (?,?,?,?,?,?,?,?,?)"));
 	}
    bool success = false;
 	if (hStmt != nullptr)
@@ -431,6 +436,7 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
 	}
 
 	//m_lastPollStatus = m_status;
+   sendPollerMsg(_T("Finished status polling of business service %s [%d] \r\n"), m_name, (int)m_id);
 	nxlog_debug_tag(DEBUG_TAG, 5, _T("Finished status polling of business service %s [%d]"), m_name, (int)m_id);
 	m_busy = false;
 }
@@ -478,6 +484,7 @@ void BusinessService::configurationPoll(PollerInfo *poller, ClientSession *sessi
    if (m_isDeleteInitiated || IsShutdownInProgress())
    {
       m_configurationPollState.complete(0);
+      sendPollerMsg(_T("Server shutdown in progress, poll canceled \r\n"));
       unlockProperties();
       return;
    }
@@ -509,8 +516,10 @@ void BusinessService::objectCheckAutoBinding()
    if (isAutoBindEnabled())
    {
       nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): Auto binding object SLM checks"), m_name);
-
+      sendPollerMsg(_T("Business service(%s): Auto binding object SLM checks \r\n"), m_name);
       unique_ptr<SharedObjectArray<NetObj>> objects = g_idxObjectById.getObjects();
+      int bindedCount = 0;
+      int unbindedCount = 0;
       for (int i = 0; i < objects->size(); i++)
       {
          shared_ptr<NetObj> object = objects->getShared(i);
@@ -532,6 +541,7 @@ void BusinessService::objectCheckAutoBinding()
                {
                   nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): object check %ld unbinded"), foundCheckId);
                   deleteCheck(foundCheckId);
+                  unbindedCount++;
                }
                if (foundCheckId == 0 && des == AutoBindDecision_Bind)
                {
@@ -546,10 +556,16 @@ void BusinessService::objectCheckAutoBinding()
                   check->saveToDatabase();
                   nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): object check %s[%ld] binded"), checkName, foundCheckId);
                   NotifyClientsOnSlmCheckUpdate(*this, check);
+                  bindedCount++;
                }
             }
          }
       }
+      sendPollerMsg(_T("Binded new object SLM checks: %ld, unbinded old object SLM checks: %ld \r\n"), bindedCount, unbindedCount);
+   }
+   else
+   {
+      sendPollerMsg(_T("Autobind for objects disabled \r\n"));
    }
 }
 
@@ -558,7 +574,10 @@ void BusinessService::dciCheckAutoBinding()
    if (isAutoBindDCIEnabled())
    {
       nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): Auto binding DCI SLM checks"), m_name);
+      sendPollerMsg(_T("Business service(%s): Auto binding DCI SLM checks \r\n"), m_name);
       unique_ptr<SharedObjectArray<NetObj>> objects = g_idxObjectById.getObjects();
+      int bindedCount = 0;
+      int unbindedCount = 0;
       for (int i = 0; i < objects->size(); i++)
       {
          shared_ptr<NetObj> object = objects->getShared(i);
@@ -587,6 +606,7 @@ void BusinessService::dciCheckAutoBinding()
                      {
                         nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): DCI check %ld unbinded"), foundCheckId);
                         deleteCheck(foundCheckId);
+                        unbindedCount++;
                      }
                      if (foundCheckId == 0 && des == AutoBindDecision_Bind)
                      {
@@ -603,6 +623,7 @@ void BusinessService::dciCheckAutoBinding()
                         check->saveToDatabase();
                         nxlog_debug_tag(DEBUG_TAG, 2, _T("Business service(%s): DCI check %s[%ld] binded"), checkName, foundCheckId);
                         NotifyClientsOnSlmCheckUpdate(*this, check);
+                        bindedCount++;
                      }
                   }
                }
@@ -610,6 +631,11 @@ void BusinessService::dciCheckAutoBinding()
 
          }
       }
+      sendPollerMsg(_T("Binded new DCI SLM checks: %ld, unbinded old DCI SLM checks: %ld \r\n"), bindedCount, unbindedCount);
+   }
+   else
+   {
+      sendPollerMsg(_T("Autobind for DCI disabled \r\n"));
    }
 }
 
@@ -963,16 +989,6 @@ unique_ptr<SharedObjectArray<BusinessService>> BusinessServicePrototype::getServ
    return services;
 }
 
-void BusinessServicePrototype::deleteBusinessService(shared_ptr<BusinessService> service)
-{
-
-}
-
-void BusinessServicePrototype::createBusinessService(const TCHAR* intance)
-{
-
-}
-
 void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
    poller->startExecution();
@@ -993,13 +1009,28 @@ void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientS
 
    for (auto it = services->begin(); it.hasNext(); )
    {
-      deleteBusinessService(it.next());
+      ObjectTransactionStart();
+      it.next()->deleteObject();
+      ObjectTransactionEnd();
       it.remove();
    }
 
    for (int i = 0; i < instances->size(); i++ )
    {
-      createBusinessService(instances->get(i));
+      TCHAR serviceName[MAX_OBJECT_NAME];
+      _sntprintf(serviceName, MAX_OBJECT_NAME, "%s [%s]", m_name, instances->get(i));
+      auto service = make_shared<BusinessService>(serviceName);
+      if (service != nullptr)
+      {
+         service->setInstance(instances->get(i));
+         service->setPrototypeId(m_id);
+         //service->setChecks(m_checks);
+         NetObjInsert(service, true, false);  // Insert into indexes
+      }
+      else     // Object load failed
+      {
+         nxlog_write(NXLOG_ERROR, _T("Failed to create business service object"));
+      }
    }
 
    delete poller;

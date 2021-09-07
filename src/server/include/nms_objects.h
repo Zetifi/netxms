@@ -4480,6 +4480,7 @@ protected:
 public:
    BaseBusinessService(const TCHAR* name);
    BaseBusinessService();
+   virtual ~BaseBusinessService();
    ObjectArray<SlmCheck> *getChecks() { return &m_checks; }
    void deleteCheck(uint32_t checkId);
    virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
@@ -4526,7 +4527,9 @@ public:
 
    virtual int getObjectClass() const override { return OBJECT_BUSINESS_SERVICE; }
    uint32_t getPrototypeId() { return m_prototypeId; }
+   void setPrototypeId(uint32_t id) { m_prototypeId = id; }
    const TCHAR* getInstance() { return m_instance; } const
+   void setInstance(const TCHAR* instance) { MemFree(m_instance); m_instance = MemCopyString(instance); }
    void startForcedStatusPoll() { m_statusPollState.manualStart(); }
    void statusPollWorkerEntry(PollerInfo *poller) { statusPollWorkerEntry(poller, nullptr, 0); }
    void statusPollWorkerEntry(PollerInfo *poller, ClientSession *session, UINT32 rqId);
@@ -4561,8 +4564,6 @@ protected:
    void compileInstanceDiscoveryScript();
    unique_ptr<StringList> getInstances();
    unique_ptr<SharedObjectArray<BusinessService>> getServices();
-   void deleteBusinessService(shared_ptr<BusinessService> service);
-   void createBusinessService(const TCHAR* intance);
 
 public:
    BusinessServicePrototype(const TCHAR *name, uint32_t method);
