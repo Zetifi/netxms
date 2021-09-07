@@ -74,17 +74,17 @@ public class ObjectPollsMenuFactory
          addMenuItem(pollsMenu, object, NodePollType.TOPOLOGY, p);
          added = true;
 		}
+      else if (object instanceof BusinessServicePrototype)
+      {
+         addMenuItem(pollsMenu, object, NodePollType.INSTANCE_DISCOVERY, p);   
+         added = true;
+      }
 		else if (object instanceof Cluster || object instanceof BusinessService)
 		{
          addMenuItem(pollsMenu, object, NodePollType.STATUS, p);
          addMenuItem(pollsMenu, object, NodePollType.CONFIGURATION_NORMAL, p);	
          added = true;	   
 		}
-      else if (object instanceof BusinessServicePrototype)
-      {
-         addMenuItem(pollsMenu, object, NodePollType.INSTANCE_DISCOVERY, p);   
-         added = true;
-      }
       else if (object instanceof Sensor)
       {
          addMenuItem(pollsMenu, object, NodePollType.STATUS, p);

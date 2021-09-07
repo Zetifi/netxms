@@ -325,6 +325,7 @@ static bool H_UpgradeFromV68()
       _T("ALTER TABLE auto_bind_target ADD flags integer\n")
       _T("<END>");
    CHK_EXEC(SQLBatch(autoBindBatch));
+   CHK_EXEC(DBRenameColumn(g_dbHandle, _T("auto_bind_target"), _T("bind_filter"), _T("bind_filter_1")));
 
    DB_RESULT autoBindResult = SQLSelect(_T("SELECT object_id,bind_flag,unbind_flag FROM auto_bind_target"));
    if (autoBindResult != nullptr)

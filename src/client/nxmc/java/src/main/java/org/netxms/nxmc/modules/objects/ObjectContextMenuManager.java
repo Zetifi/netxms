@@ -33,6 +33,7 @@ import org.netxms.client.NXCObjectCreationData;
 import org.netxms.client.NXCSession;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.BusinessService;
+import org.netxms.client.objects.BusinessServicePrototype;
 import org.netxms.client.objects.BusinessServiceRoot;
 import org.netxms.client.objects.Container;
 import org.netxms.client.objects.Node;
@@ -256,7 +257,7 @@ public class ObjectContextMenuManager extends MenuManager
       addAction(createMenu, actionCreateMobileDevice, (AbstractObject o) -> (o instanceof Container) || (o instanceof ServiceRoot));
       addAction(createMenu, actionCreateRack, (AbstractObject o) -> (o instanceof Container) || (o instanceof ServiceRoot));
       addAction(createMenu, actionCreateVpnConnector, (AbstractObject o) -> o instanceof Node);
-      addAction(createMenu, actionCreateBusinessService, (AbstractObject o) -> (o instanceof BusinessService) || (o instanceof BusinessServiceRoot));
+      addAction(createMenu, actionCreateBusinessService, (AbstractObject o) -> (o instanceof BusinessService) || (o instanceof BusinessServiceRoot) && !(o instanceof BusinessServicePrototype));
       addAction(createMenu, actionCreateBusinessServicePrototype, (AbstractObject o) -> (o instanceof BusinessService) || (o instanceof BusinessServiceRoot));
       if (!createMenu.isEmpty())
          add(createMenu);
