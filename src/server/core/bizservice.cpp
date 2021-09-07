@@ -1018,7 +1018,7 @@ void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientS
    for (int i = 0; i < instances->size(); i++ )
    {
       TCHAR serviceName[MAX_OBJECT_NAME];
-      _sntprintf(serviceName, MAX_OBJECT_NAME, "%s [%s]", m_name, instances->get(i));
+      _sntprintf(serviceName, MAX_OBJECT_NAME, _T("%s [%s]"), m_name, instances->get(i));
       auto service = make_shared<BusinessService>(serviceName);
       if (service != nullptr)
       {
