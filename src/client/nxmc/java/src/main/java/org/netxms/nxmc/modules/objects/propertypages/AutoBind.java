@@ -168,15 +168,18 @@ public class AutoBind extends ObjectPropertyPage
 		final NXCSession session =  Registry.getSession();
 		final NXCObjectModificationData md = new NXCObjectModificationData(((GenericObject)autoBindObject).getObjectId());
 		md.setAutoBindFilter(filterSource.getText());
-      md.setAutoBindFlags(apply, remove);
+      int flags = autoBindObject.getAutoBindFlags();
+      flags = apply ? flags | AutoBindObject.OBJECT_BIND_FLAG : flags & ~AutoBindObject.OBJECT_BIND_FLAG;  
+      flags = remove ? flags | AutoBindObject.OBJECT_UNBIND_FLAG : flags & ~AutoBindObject.OBJECT_UNBIND_FLAG;  
+      md.setAutoBindFlags(flags);
 		
 		new Job(i18n.tr("Update auto-bind filter"), null, null) {
 			@Override
 			protected void run(IProgressMonitor monitor) throws Exception
 			{
 				session.modifyObject(md);
-		      initialBind = md.isAutoBindEnabled();
-		      initialUnbind = md.isAutoUnbindEnabled();
+		      initialBind = apply;
+		      initialUnbind = remove;
 				initialAutoBindFilter = md.getAutoBindFilter();
 			}
 

@@ -32,11 +32,8 @@ import org.netxms.client.objects.interfaces.PollingTarget;
  */
 public class BusinessService extends GenericObject implements AutoBindObject, AutoBindDCIObject, PollingTarget
 {
-   private boolean objectAutoBind;
-   private boolean objectAutoUnbind;
+   private int autoBindFlags;
    private String objectAutoBindFilter;
-   private boolean dciAutoBind;
-   private boolean dciAutoUnbind;
    private String dciAutoBindFilter;
    private int objectStatusThreshold;
    private int dciStatusThreshold;
@@ -48,12 +45,9 @@ public class BusinessService extends GenericObject implements AutoBindObject, Au
    {
       super(msg, session);
       objectAutoBindFilter = msg.getFieldAsString(NXCPCodes.VID_AUTOBIND_FILTER);
-      objectAutoBind = msg.getFieldAsBoolean(NXCPCodes.VID_AUTOBIND_FLAG);
-      objectAutoUnbind = msg.getFieldAsBoolean(NXCPCodes.VID_AUTOUNBIND_FLAG);
+      autoBindFlags = msg.getFieldAsInt32(NXCPCodes.VID_AUTOBIND_FLAGS);
       objectStatusThreshold = msg.getFieldAsInt32(NXCPCodes.VID_OBJECT_STATUS_THRESHOLD);
-      dciAutoBindFilter = msg.getFieldAsString(NXCPCodes.VID_DCI_AUTOBIND_FILTER);
-      dciAutoBind = msg.getFieldAsBoolean(NXCPCodes.VID_DCI_AUTOBIND_FLAG);
-      dciAutoUnbind = msg.getFieldAsBoolean(NXCPCodes.VID_DCI_AUTOUNBIND_FLAG);
+      dciAutoBindFilter = msg.getFieldAsString(NXCPCodes.VID_AUTOBIND_FILTER_2);
       dciStatusThreshold = msg.getFieldAsInt32(NXCPCodes.VID_DCI_STATUS_THRESHOLD);
    }
 
@@ -80,7 +74,7 @@ public class BusinessService extends GenericObject implements AutoBindObject, Au
     */
    public boolean isAutoBindEnabled()
    {
-      return objectAutoBind;
+      return (autoBindFlags & OBJECT_BIND_FLAG) > 0;
    }
 
    /**
@@ -88,7 +82,7 @@ public class BusinessService extends GenericObject implements AutoBindObject, Au
     */
    public boolean isAutoUnbindEnabled()
    {
-      return objectAutoUnbind;
+      return (autoBindFlags & OBJECT_UNBIND_FLAG) > 0;
    }
 
    /**
@@ -102,20 +96,18 @@ public class BusinessService extends GenericObject implements AutoBindObject, Au
    @Override
    public boolean isDciAutoBindEnabled()
    {
-      return dciAutoBind;
+      return (autoBindFlags & DCI_BIND_FLAG) > 0;
    }
 
    @Override
    public boolean isDciAutoUnbindEnabled()
    {
-      // TODO Auto-generated method stub
-      return dciAutoUnbind;
+      return (autoBindFlags & DCI_UNBIND_FLAG) > 0;
    }
 
    @Override
    public String getDciAutoBindFilter()
    {
-      // TODO Auto-generated method stub
       return dciAutoBindFilter;
    }
 
@@ -226,5 +218,13 @@ public class BusinessService extends GenericObject implements AutoBindObject, Au
    public int getObjectStatusThreshold()
    {
       return objectStatusThreshold;
+   }
+
+   /**
+    * @return the autoBindFlags
+    */
+   public int getAutoBindFlags()
+   {
+      return autoBindFlags;
    }
 }

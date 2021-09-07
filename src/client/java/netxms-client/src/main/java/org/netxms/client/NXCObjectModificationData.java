@@ -163,8 +163,6 @@ public class NXCObjectModificationData
    private List<String> snmpPorts;
    private List<PassiveRackElement> passiveElements;
    private List<Long> responsibleUsers;
-   private Boolean isAutoBindEnabled;
-   private Boolean isAutoUnbindEnabled;
    private IcmpStatCollectionMode icmpStatCollectionMode;
    private List<InetAddress> icmpTargets;
    private String chassisPlacement;
@@ -178,9 +176,8 @@ public class NXCObjectModificationData
    private Integer instanceDiscoveryMethod;
    private String instanceDiscoveryData;
    private String instanceDiscoveryFilter;
-   private String dciAutoBindFilter;
-   private Boolean isDciAutoBindEnabled;
-   private Boolean isDciAutoUnbindEnabled;
+   private String autoBindFilter2;
+   private Integer autoBindFlags;
    private Integer objectStatusThreshold;
    private Integer dciStatusThreshold;
 
@@ -324,22 +321,6 @@ public class NXCObjectModificationData
    public void setAutoBindFilter(String autoBindFilter)
    {
       this.autoBindFilter = autoBindFilter;
-   }
-
-   /**
-    * @return the autoApplyFilter
-    */
-   public String getDciAutoBindFilter()
-   {
-      return dciAutoBindFilter;
-   }
-
-   /**
-    * @param autoBindFilter the autoApplyFilter to set
-    */
-   public void setDciAutoBindFilter(String dciAutoBindFilter)
-   {
-      this.dciAutoBindFilter = dciAutoBindFilter;
    }
 
    /**
@@ -1921,62 +1902,6 @@ public class NXCObjectModificationData
    }
 
    /**
-    * Set abuto bind/remove options
-    *
-    * @param autoApply  TODO
-    * @param autoUnbind TODO
-    */
-   public void setAutoBindFlags(boolean autoApply, boolean autoUnbind)
-   {
-      isAutoBindEnabled = autoApply;
-      isAutoUnbindEnabled = autoUnbind;
-   }
-
-   /**
-    * @return if auto bind is enabled
-    */
-   public Boolean isAutoBindEnabled()
-   {
-      return isAutoBindEnabled;
-   }
-
-   /**
-    * @return if auto remove is enabled
-    */
-   public Boolean isAutoUnbindEnabled()
-   {
-      return isAutoUnbindEnabled;
-   }
-
-   /**
-    * Set abuto bind/remove options
-    *
-    * @param autoApply  TODO
-    * @param autoUnbind TODO
-    */
-   public void setDciAutoBindFlags(boolean dciAutoApply, boolean dciAutoUnbind)
-   {
-      isDciAutoBindEnabled = dciAutoApply;
-      isDciAutoUnbindEnabled = dciAutoUnbind;
-   }
-
-   /**
-    * @return if auto bind is enabled
-    */
-   public Boolean isDciAutoBindEnabled()
-   {
-      return isDciAutoBindEnabled;
-   }
-
-   /**
-    * @return if auto remove is enabled
-    */
-   public Boolean isDciAutoUnbindEnabled()
-   {
-      return isDciAutoUnbindEnabled;
-   }
-
-   /**
     * Get ICMP statistic collection mode
     * 
     * @return ICMP statistic collection mode
@@ -2215,6 +2140,38 @@ public class NXCObjectModificationData
    public final void setInstanceDiscoveryFilter(String instanceDiscoveryFilter)
    {
       this.instanceDiscoveryFilter = instanceDiscoveryFilter;
+   }
+
+   /**
+    * @return the autoBindFilter2
+    */
+   public String getAutoBindFilter2()
+   {
+      return autoBindFilter2;
+   }
+
+   /**
+    * @param autoBindFilter2 the autoBindFilter2 to set
+    */
+   public void setAutoBindFilter2(String autoBindFilter2)
+   {
+      this.autoBindFilter2 = autoBindFilter2;
+   }
+
+   /**
+    * @return the autoBindFlags
+    */
+   public Integer getAutoBindFlags()
+   {
+      return autoBindFlags;
+   }
+
+   /**
+    * @param autoBindFlags the autoBindFlags to set
+    */
+   public void setAutoBindFlags(Integer autoBindFlags)
+   {
+      this.autoBindFlags = autoBindFlags;
    }
 
    /**

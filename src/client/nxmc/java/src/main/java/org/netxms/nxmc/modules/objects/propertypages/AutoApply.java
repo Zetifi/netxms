@@ -32,6 +32,7 @@ import org.netxms.client.NXCObjectModificationData;
 import org.netxms.client.NXCSession;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.Template;
+import org.netxms.client.objects.interfaces.AutoBindObject;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -161,15 +162,18 @@ public class AutoApply extends ObjectPropertyPage
 		final NXCSession session = Registry.getSession();
 		final NXCObjectModificationData md = new NXCObjectModificationData(object.getObjectId());
 		md.setAutoBindFilter(filterSource.getText());
-		md.setAutoBindFlags(apply, remove);
+      int flags = ((Template)object).getAutoApplyFlags();
+      flags = apply ? flags | AutoBindObject.OBJECT_BIND_FLAG : flags & ~AutoBindObject.OBJECT_BIND_FLAG;  
+      flags = remove ? flags | AutoBindObject.OBJECT_UNBIND_FLAG : flags & ~AutoBindObject.OBJECT_UNBIND_FLAG;  
+      md.setAutoBindFlags(flags);
 		
 		new Job(i18n.tr("Update auto-apply filter"), null, null) {
 			@Override
 			protected void run(IProgressMonitor monitor) throws Exception
 			{
 				session.modifyObject(md);
-		      initialBind = md.isAutoBindEnabled();
-		      initialUnbind = md.isAutoUnbindEnabled();
+		      initialBind = apply;
+		      initialUnbind = remove;
 				initialApplyFilter = md.getAutoBindFilter();
 			}
 

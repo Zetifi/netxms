@@ -5955,25 +5955,14 @@ public class NXCSession
          msg.setField(NXCPCodes.VID_AUTOBIND_FILTER, data.getAutoBindFilter());
       }
 
-      if (data.getDciAutoBindFilter() != null)
+      if (data.getAutoBindFilter2() != null)
       {
-         msg.setField(NXCPCodes.VID_DCI_AUTOBIND_FILTER, data.getDciAutoBindFilter());
+         msg.setField(NXCPCodes.VID_AUTOBIND_FILTER_2, data.getAutoBindFilter2());
       }
 
-      if (data.isAutoBindEnabled() != null || data.isAutoUnbindEnabled() != null)
+      if (data.getAutoBindFlags() != null)
       {
-         if (data.isAutoBindEnabled() == null || data.isAutoUnbindEnabled() == null)
-            throw new NXCException(RCC.VARIABLE_NOT_FOUND);
-         msg.setField(NXCPCodes.VID_AUTOBIND_FLAG, data.isAutoBindEnabled());
-         msg.setField(NXCPCodes.VID_AUTOUNBIND_FLAG, data.isAutoUnbindEnabled());
-      }
-
-      if (data.isDciAutoBindEnabled() != null || data.isDciAutoUnbindEnabled() != null)
-      {
-         if (data.isDciAutoBindEnabled() == null || data.isDciAutoUnbindEnabled() == null)
-            throw new NXCException(RCC.VARIABLE_NOT_FOUND);
-         msg.setField(NXCPCodes.VID_DCI_AUTOBIND_FLAG, data.isDciAutoBindEnabled());
-         msg.setField(NXCPCodes.VID_DCI_AUTOUNBIND_FLAG, data.isDciAutoUnbindEnabled());
+         msg.setFieldInt32(NXCPCodes.VID_AUTOBIND_FLAGS, data.getAutoBindFlags());
       }
 
       if (data.getFilter() != null)
