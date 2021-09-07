@@ -941,7 +941,11 @@ unique_ptr<StringList> BusinessServicePrototype::getInstances()
    StringList* instances = new StringList();
    NXSL_VM *filter = nullptr;
 
-   filter = CreateServerScriptVM(m_pCompiledInstanceDiscoveryScript, nullptr);
+   if (m_pCompiledInstanceDiscoveryScript != nullptr)
+   {
+      filter = CreateServerScriptVM(m_pCompiledInstanceDiscoveryScript, nullptr);
+   }
+
    if (filter == nullptr)
    {
       /*TCHAR buffer[1024];
