@@ -69,6 +69,8 @@ BaseBusinessService::BaseBusinessService(const TCHAR* name) : m_checks(10, 10, O
 BaseBusinessService::~BaseBusinessService()
 {
    MemFree(m_instance);
+   MemFree(m_instanceDiscoveryData);
+   MemFree(m_instanceDiscoveryFilter);
 }
 
 /**
@@ -276,6 +278,33 @@ bool BaseBusinessService::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
       return false;
    if (!AutoBindTarget::loadFromDatabase(hdb, id))
       return false;
+
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT prototype_id,instance,instance_method,instance_data,instance_filter,object_status_threshold,dci_status_threshold ")
+													_T("FROM business_services WHERE service_id=?"));
+	if (hStmt == NULL)
+	{
+		nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from business_services"));
+		return false;
+	}
+
+	DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, id);
+	DB_RESULT hResult = DBSelectPrepared(hStmt);
+	if (hResult == NULL)
+	{
+		DBFreeStatement(hStmt);
+		return false;
+	}
+
+   m_prototypeId = DBGetFieldULong(hResult, 0, 0);
+   m_instance = DBGetField(hResult, 0, 1, nullptr, 0);
+   m_instanceDiscoveryMethod = DBGetFieldULong(hResult, 0, 2);
+   m_instanceDiscoveryData = DBGetField(hResult, 0, 3, nullptr, 0);
+   m_instanceDiscoveryFilter = DBGetField(hResult, 0, 4, nullptr, 0);
+   m_objectStatusThreshhold = DBGetFieldULong(hResult, 0, 5);
+   m_dciStatusThreshhold = DBGetFieldULong(hResult, 0, 6);
+
+	DBFreeResult(hResult);
+	DBFreeStatement(hStmt);
    nxlog_debug_tag(DEBUG_TAG, 4, _T("Business service %s [%ld] loaded successfully"), m_name, (long)id);
    return true;
 }
@@ -357,6 +386,7 @@ BusinessService::BusinessService(const TCHAR *name) : BaseBusinessService(name),
  */
 BusinessService::~BusinessService()
 {
+   MutexDestroy(m_hPollerMutex);
 }
 
 uint32_t BusinessService::modifyFromMessageInternal(NXCPMessage *request)
@@ -879,6 +909,10 @@ BusinessServicePrototype::BusinessServicePrototype(const TCHAR *name, uint32_t i
  */
 BusinessServicePrototype::~BusinessServicePrototype()
 {
+   if (m_pCompiledInstanceDiscoveryScript != nullptr)
+   {
+      delete m_pCompiledInstanceDiscoveryScript;
+   }
 }
 
 bool BusinessServicePrototype::loadFromDatabase(DB_HANDLE hdb, UINT32 id)

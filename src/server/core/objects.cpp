@@ -2030,7 +2030,6 @@ BOOL LoadObjects()
 	   DBFreeResult(hResult);
    }
    g_idxObjectById.setStartupMode(false);
-   //g_idxServiceCheckById.setStartupMode(false);
 
 	// Load custom object classes provided by modules
    CALL_ALL_MODULES(pfLoadObjects, ());

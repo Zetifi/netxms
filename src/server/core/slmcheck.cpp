@@ -163,7 +163,7 @@ const TCHAR* SlmCheck::getReason()
 				DB_RESULT hResult = DBSelectPrepared(hStmt);
 				if (hResult != NULL)
 				{
-					DBGetField(hResult, 0, 1, m_reason, 255);
+					DBGetField(hResult, 0, 0, m_reason, 255);
 					DBFreeResult(hResult);
 				}
 				DBFreeStatement(hStmt);
