@@ -2046,7 +2046,7 @@ CREATE TABLE slm_tickets
 /*
 ** SLA service change log
 */
-CREATE TABLE slm_service_history
+CREATE TABLE slm_service_downtime
 (
   record_id integer not null,
   service_id integer not null,
