@@ -122,6 +122,23 @@ void BaseBusinessService::deleteCheck(uint32_t checkId)
    }
 }
 
+void BaseBusinessService::setChecks(ObjectArray<SlmCheck>& checks)
+{
+   for(int i = 0; i < checks.size(); i++)
+   {
+      SlmCheck* ch = new SlmCheck(m_id);
+      m_checks.add(ch);
+      ch->generateId();
+      ch->setType(checks.get(i)->getType());
+      ch->setRelatedObject(checks.get(i)->getRelatedObject());
+      ch->setRelatedDCI(checks.get(i)->getRelatedDCI());
+      ch->setThreshold(checks.get(i)->getThreshold());
+      ch->setName(checks.get(i)->getName());
+      ch->setScript(checks.get(i)->getScript());
+      ch->saveToDatabase();
+   }
+}
+
 void BaseBusinessService::deleteCheckFromDatabase(uint32_t checkId)
 {
    DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
@@ -236,11 +253,6 @@ void BaseBusinessService::modifyCheckFromMessage(NXCPMessage *request)
 uint32_t BaseBusinessService::modifyFromMessageInternal(NXCPMessage *request)
 {
    AutoBindTarget::modifyFromMessage(request);
-   if (request->isFieldExist(VID_INSTANCE))
-   {
-      MemFree(m_instance);
-      m_instance = request->getFieldAsString(VID_INSTANCE);
-   }
    if (request->isFieldExist(VID_INSTD_METHOD))
    {
       m_instanceDiscoveryMethod = request->getFieldAsUInt32(VID_INSTD_METHOD);
@@ -254,6 +266,14 @@ uint32_t BaseBusinessService::modifyFromMessageInternal(NXCPMessage *request)
    {
       MemFree(m_instanceDiscoveryFilter);
       m_instanceDiscoveryFilter = request->getFieldAsString(VID_INSTD_FILTER);
+   }
+   if (request->isFieldExist(VID_OBJECT_STATUS_THRESHOLD))
+   {
+      m_objectStatusThreshhold = request->getFieldAsUInt32(VID_OBJECT_STATUS_THRESHOLD);
+   }
+   if (request->isFieldExist(VID_DCI_STATUS_THRESHOLD))
+   {
+      m_dciStatusThreshhold = request->getFieldAsUInt32(VID_DCI_STATUS_THRESHOLD);
    }
    return super::modifyFromMessageInternal(request);
 }
@@ -420,6 +440,9 @@ void BusinessService::statusPollWorkerEntry(PollerInfo *poller, ClientSession *s
 
 void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
+   m_pollRequestor = session;
+   m_pollRequestId = rqId;
+
    if (IsShutdownInProgress())
    {
       sendPollerMsg(_T("Server shutdown in progress, poll canceled \r\n"));
@@ -539,6 +562,9 @@ void BusinessService::configurationPollWorkerEntry(PollerInfo *poller, ClientSes
 
 void BusinessService::configurationPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
+   m_pollRequestor = session;
+   m_pollRequestId = rqId;
+
    lockProperties();
    if (m_isDeleteInitiated || IsShutdownInProgress())
    {
@@ -918,8 +944,6 @@ void GetServiceTickets(uint32_t serviceId, time_t from, time_t to, NXCPMessage* 
  */
 BusinessServicePrototype::BusinessServicePrototype() : m_discoveryPollState(_T("discovery"))
 {
-   m_instanceDiscoveryMethod = 0;
-   m_instanceDiscoveryData = nullptr;
    m_pCompiledInstanceDiscoveryScript = nullptr;
 }
 
@@ -929,7 +953,6 @@ BusinessServicePrototype::BusinessServicePrototype() : m_discoveryPollState(_T("
 BusinessServicePrototype::BusinessServicePrototype(const TCHAR *name, uint32_t instanceDiscoveryMethod) : BaseBusinessService(name), m_discoveryPollState(_T("discovery"))
 {
    m_instanceDiscoveryMethod = instanceDiscoveryMethod;
-   m_instanceDiscoveryData = nullptr;
    m_pCompiledInstanceDiscoveryScript = nullptr;
 }
 
@@ -959,17 +982,12 @@ bool BusinessServicePrototype::loadFromDatabase(DB_HANDLE hdb, UINT32 id)
 
 uint32_t BusinessServicePrototype::modifyFromMessageInternal(NXCPMessage *request)
 {
-   if (request->isFieldExist(VID_INSTD_METHOD))
+   uint32_t rcc = super::modifyFromMessageInternal(request);
+   if (request->isFieldExist(VID_INSTD_FILTER))
    {
-      m_instanceDiscoveryMethod = request->getFieldAsUInt32(VID_INSTD_METHOD);
-   }
-   if (request->isFieldExist(VID_INSTD_DATA))
-   {
-      MemFree(m_instanceDiscoveryData);
-      m_instanceDiscoveryData = request->getFieldAsString(VID_INSTD_DATA);
 		compileInstanceDiscoveryScript();
    }
-   return super::modifyFromMessageInternal(request);
+   return rcc;
 }
 
 /**
@@ -977,7 +995,7 @@ uint32_t BusinessServicePrototype::modifyFromMessageInternal(NXCPMessage *reques
  */
 void BusinessServicePrototype::compileInstanceDiscoveryScript()
 {
-	if (m_instanceDiscoveryData == nullptr)
+	if (m_instanceDiscoveryFilter == nullptr)
 	   return;
 
    const int errorMsgLen = 512;
@@ -985,17 +1003,19 @@ void BusinessServicePrototype::compileInstanceDiscoveryScript()
 
 	if (m_pCompiledInstanceDiscoveryScript != nullptr)
 		delete m_pCompiledInstanceDiscoveryScript;
-   m_pCompiledInstanceDiscoveryScript = NXSLCompile(m_instanceDiscoveryData, errorMsg, errorMsgLen, nullptr);
+   m_pCompiledInstanceDiscoveryScript = NXSLCompile(m_instanceDiscoveryFilter, errorMsg, errorMsgLen, nullptr);
    if (m_pCompiledInstanceDiscoveryScript == nullptr)
    {
       nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to compile script for service instance discovery %s [%u] (%s)"), m_name, m_id, errorMsg);
+   }
+   else
+   {
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Compiled script for service instance discovery %s [%u] : (%s)"), m_name, m_id, m_instanceDiscoveryFilter);
    }
 }
 
 void BusinessServicePrototype::fillMessageInternal(NXCPMessage *msg, uint32_t userId)
 {
-   msg->setField(VID_INSTD_METHOD, m_instanceDiscoveryMethod);
-   msg->setField(VID_INSTD_DATA, m_instanceDiscoveryData);
    super::fillMessageInternal(msg, userId);
 }
 
@@ -1011,10 +1031,10 @@ unique_ptr<StringList> BusinessServicePrototype::getInstances()
 
    if (filter == nullptr)
    {
-      /*TCHAR buffer[1024];
-      _sntprintf(buffer, 1024, _T("%s::%s::%d"), m_this->getObjectClassName(), m_this->getName(), m_this->getId());
-      PostSystemEvent(EVENT_SCRIPT_ERROR, g_dwMgmtNode, "ssd", buffer, _T("Script load error"), m_this->getId());
-      nxlog_write(NXLOG_WARNING, _T("Failed to load autobind script for object %s [%u]"), m_this->getName(), m_this->getId());*/
+      TCHAR buffer[1024];
+      _sntprintf(buffer, 1024, _T("%s::%s::%d"), getObjectClassName(), m_name, m_id);
+      PostSystemEvent(EVENT_SCRIPT_ERROR, g_dwMgmtNode, "ssd", buffer, _T("Script load error"), m_id);
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to load instance discovery script for business service prototype %s [%u]"), m_name, m_id);
    }
 
    if (filter != nullptr)
@@ -1029,12 +1049,12 @@ unique_ptr<StringList> BusinessServicePrototype::getInstances()
       }
       else
       {
-         /*internalLock();
+         //internalLock();
          TCHAR buffer[1024];
-         _sntprintf(buffer, 1024, _T("%s::%s::%d"), m_this->getObjectClassName(), m_this->getName(), m_this->getId());
-         PostSystemEvent(EVENT_SCRIPT_ERROR, g_dwMgmtNode, "ssd", buffer, filter->getErrorText(), m_this->getId());
-         nxlog_write(NXLOG_WARNING, _T("Failed to execute autobind script for object %s [%u] (%s)"), m_this->getName(), m_this->getId(), filter->getErrorText());
-         internalUnlock();*/
+         _sntprintf(buffer, 1024, _T("%s::%s::%d"), getObjectClassName(), m_name, m_id);
+         PostSystemEvent(EVENT_SCRIPT_ERROR, g_dwMgmtNode, "ssd", buffer, filter->getErrorText(), m_id);
+         nxlog_debug_tag(DEBUG_TAG, 2, _T("Failed to execute instance discovery script for business service prototype %s [%u] (%s)"), m_name, m_id, filter->getErrorText());
+         //internalUnlock();
       }
       delete filter;
    }
@@ -1058,8 +1078,14 @@ unique_ptr<SharedObjectArray<BusinessService>> BusinessServicePrototype::getServ
 
 void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, UINT32 rqId)
 {
+   m_pollRequestor = session;
+   m_pollRequestId = rqId;
+
+   sendPollerMsg(_T("   Started instance discovery poll for Business service prototype %s[%ld]\r\n"), m_name, m_id);
+
    poller->startExecution();
    unique_ptr<StringList> instances = getInstances();
+
    unique_ptr<SharedObjectArray<BusinessService>> services = getServices();
    if (instances != nullptr && services != nullptr)
    {
@@ -1091,8 +1117,15 @@ void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientS
       {
          service->setInstance(instances->get(i));
          service->setPrototypeId(m_id);
-         //service->setChecks(m_checks);
+         service->setAutoBindFilter(m_bindFilterSource);
+         service->setAutoBindDCIFilter(m_bindFilterSourceDCI);
+         service->setChecks(m_checks);
+         service->setAutoBindFlags(m_autoBindFlags);
          NetObjInsert(service, true, false);  // Insert into indexes
+         g_businessServiceRoot->addChild(service);
+         service->addParent(g_businessServiceRoot);
+         g_businessServiceRoot->calculateCompoundStatus();
+         service->unhide();
       }
       else     // Object load failed
       {

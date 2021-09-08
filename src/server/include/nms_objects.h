@@ -1291,6 +1291,7 @@ public:
    bool isAutoUnbindDCIEnabled() { return isAutoBindDCIEnabled() && m_autoBindFlags & AAF_AUTO_REMOVE_2; }
    void setAutoBindDCIFilter(const TCHAR *filter);
    void setAutoBindDCIMode(bool doBind, bool doUnbind);
+   void setAutoBindFlags(uint32_t flags) { m_autoBindFlags = flags; }
 
    const TCHAR *getAutoBindDCIScriptSource() const { return m_bindFilterSourceDCI; }
 };
@@ -4391,7 +4392,7 @@ protected:
    bool insertTicket(SlmTicketData* ticket);
    void closeTicket();
    void compileScript();
-   NXSL_Value *getNodeObjectForNXSL(NXSL_VM *vm);
+   NXSL_Value *getObjectForNXSL(NXSL_VM *vm, int objectClass = -1);
    const TCHAR* getReason();
 
 public:
@@ -4400,7 +4401,8 @@ public:
 
    int getType() { return m_type; }
    void setType( int type ) { if ( type >= OBJECT && type <= DCI ) m_type = type; }
-   const TCHAR* getScript() { return m_script; } 
+   const TCHAR* getScript() { return m_script; } const
+   void setScript(const TCHAR* script) { m_script = MemCopyString(script); }
    uint32_t getId() { return m_id; }
    void generateId();
    uint32_t getRelatedObject() { return m_relatedObject; }
@@ -4411,7 +4413,8 @@ public:
    uint32_t getStatus() { return m_status; }
    void setName(const TCHAR* name) { _tcslcpy(m_name, name, 1023); }
    const TCHAR* getName() { return m_name; } const
-   void setThreshold(uint32_t threshold) { m_statusThreshold = threshold; }
+   void setThreshold(int threshold) { m_statusThreshold = threshold; }
+   int getThreshold() { return m_statusThreshold; }
 
    uint32_t execute(SlmTicketData* ticket);
 
@@ -4479,6 +4482,7 @@ public:
    void deleteCheck(uint32_t checkId);
    virtual bool loadFromDatabase(DB_HANDLE hdb, UINT32 id) override;
    virtual bool saveToDatabase(DB_HANDLE hdb) override;
+   void setChecks(ObjectArray<SlmCheck>& checks);
 
    static BaseBusinessService* createBusinessService(const TCHAR* name, int objectClass, NXCPMessage *request);
    static BaseBusinessService* createBusinessService(DB_HANDLE hdb, uint32_t id);

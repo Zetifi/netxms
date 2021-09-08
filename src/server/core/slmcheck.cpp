@@ -316,15 +316,15 @@ uint32_t SlmCheck::execute(SlmTicketData* ticket)
 					script->addConstant("OK", script->createValue((LONG)0));
 					script->addConstant("FAIL", script->createValue((LONG)1));
 					script->setGlobalVariable("$reason", script->createValue());
+					script->setGlobalVariable("$object", getObjectForNXSL(script));
+					script->setGlobalVariable("$node", getObjectForNXSL(script, OBJECT_NODE));
 					NXSL_VariableSystem *globals = nullptr;
 					ObjectRefArray<NXSL_Value> args(0);
-					//m_pCompiledScript->setGlobalVariable("$node", getNodeObjectForNXSL(m_pCompiledScript));
 					if (script->run(args, &globals))
 					{
 						NXSL_Value *pValue = script->getResult();
 						if (pValue->getDataType() == NXSL_DT_STRING)
 						{
-							nxlog_write_tag(2, DEBUG_TAG, _T("script: %s, result is string: %s"), m_script, pValue->getValueAsCString());
 							m_status = STATUS_CRITICAL;
 							_tcslcpy(m_reason, pValue->getValueAsCString(), 256);
 						}
@@ -332,12 +332,10 @@ uint32_t SlmCheck::execute(SlmTicketData* ticket)
 						{
 							if (pValue->getDataType() == NXSL_DT_BOOLEAN)
 							{
-								nxlog_write_tag(2, DEBUG_TAG, _T("script: %s, result is boolean: %s"), m_script, pValue->isTrue() ? _T("true") : _T("false"));
 								m_status = pValue->isTrue() ? STATUS_NORMAL : STATUS_CRITICAL;
 							}
 							else
 							{
-								nxlog_write_tag(2, DEBUG_TAG, _T("script: %s, result is int: %d"), m_script, pValue->getValueAsInt32());
 								m_status = (pValue->getValueAsInt32() == 0) ? STATUS_NORMAL : STATUS_CRITICAL;
 							}
 							if (m_status == STATUS_CRITICAL && m_reason[0] == 0)
@@ -416,8 +414,6 @@ uint32_t SlmCheck::execute(SlmTicketData* ticket)
  */
 bool SlmCheck::insertTicket(SlmTicketData* ticket)
 {
-	nxlog_write_tag(4, DEBUG_TAG, _T("SlmCheck::insertTicket() called for %s [%d], reason='%s'"), m_name, (int)m_id, m_reason);
-
 	if (m_status == STATUS_NORMAL)
 		return false;
 
@@ -467,7 +463,6 @@ bool SlmCheck::insertTicket(SlmTicketData* ticket)
  */
 void SlmCheck::closeTicket()
 {
-	nxlog_write_tag(4, DEBUG_TAG, _T("SlmCheck::closeTicket() called for %s [%d], ticketId=%d"), m_name, (int)m_id, (int)m_currentTicket);
 	DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
 	DB_STATEMENT hStmt = DBPrepare(hdb, _T("UPDATE slm_tickets SET close_timestamp=? WHERE ticket_id=? OR original_ticket_id=?"));
 	if (hStmt != NULL)
@@ -485,16 +480,16 @@ void SlmCheck::closeTicket()
 }
 
 /**
- * Get related node object for use in NXSL script
- * Will return NXSL_Value of type NULL if there are no associated node
+ * Get related object for use in NXSL script
+ * Will return NXSL_Value of type NULL if there are no associated object
  */
-NXSL_Value *SlmCheck::getNodeObjectForNXSL(NXSL_VM *vm)
+NXSL_Value *SlmCheck::getObjectForNXSL(NXSL_VM *vm, int objectClass)
 {
 	NXSL_Value *value = nullptr;
-	shared_ptr<NetObj> node = FindObjectById(m_relatedObject);
-	if ((node != nullptr) && (node->getObjectClass() == OBJECT_NODE)) //FIXME: Maybe any netobj?
+	shared_ptr<NetObj> obj = FindObjectById(m_relatedObject);
+	if ((obj != nullptr) && (objectClass >= 0 ? obj->getObjectClass() == objectClass : true))
 	{
-		value = node->createNXSLObject(vm);
+		value = obj->createNXSLObject(vm);
 	}
 
 	return (value != nullptr) ? value : vm->createValue();
