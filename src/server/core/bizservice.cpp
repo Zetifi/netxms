@@ -909,11 +909,10 @@ void GetServiceTickets(uint32_t serviceId, time_t from, time_t to, NXCPMessage* 
                uint32_t original_ticket_id = DBGetFieldULong(hResult, i, 1);
                uint32_t original_service_id = DBGetFieldULong(hResult, i, 2);
                uint32_t check_id = DBGetFieldLong(hResult, i, 3);
-               time_t create_timestamp = DBGetFieldULong(hResult, i, 4);
-               time_t close_timestamp = DBGetFieldULong(hResult, i, 5);
+               time_t create_timestamp = static_cast<time_t>(DBGetFieldULong(hResult, i, 4));
+               time_t close_timestamp = static_cast<time_t>(DBGetFieldULong(hResult, i, 5));
                TCHAR reason[256];
                DBGetField(hResult, i, 6, reason, 256);
-               _tprintf(_T("####%d %d"), ticket_id, original_ticket_id);
 
                msg->setField(VID_SLM_TICKETS_LIST_BASE + ( i * 10 ),     original_ticket_id != 0 ? original_ticket_id : ticket_id);
                msg->setField(VID_SLM_TICKETS_LIST_BASE + ( i * 10 ) + 1, original_ticket_id != 0 ? original_service_id : serviceId);

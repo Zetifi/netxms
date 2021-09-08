@@ -45,6 +45,7 @@ import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.TimePeriodSelector;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.netxms.nxmc.modules.businessservice.views.helpers.SlmTicketComparator;
 import org.netxms.nxmc.modules.businessservice.views.helpers.SlmTicketLabelProvider;
 import org.netxms.nxmc.modules.charts.api.ChartColor;
 import org.netxms.nxmc.modules.charts.api.ChartType;
@@ -228,6 +229,7 @@ public class BusinessServiceAvailabilityView extends ObjectView
       ticketViewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SortableTableViewer.DEFAULT_STYLE);
       ticketViewer.setContentProvider(new ArrayContentProvider());
       ticketViewer.setLabelProvider(new SlmTicketLabelProvider());
+      ticketViewer.setComparator(new SlmTicketComparator());
       
       gd = new GridData();
       gd.grabExcessHorizontalSpace = true;
@@ -235,9 +237,6 @@ public class BusinessServiceAvailabilityView extends ObjectView
       gd.grabExcessVerticalSpace = true;
       gd.verticalAlignment = SWT.FILL;
       ticketViewer.getTable().setLayoutData(gd);
-      //todo: label provider 
-      //comparator
-      //filter?
    }
    
    private void updateTime(int timeRange, TimeUnit unit)
