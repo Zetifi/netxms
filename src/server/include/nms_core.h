@@ -149,6 +149,7 @@
 #define IDG_SSH_KEY           27
 #define IDG_OBJECT_QUERY      28
 #define IDG_SLM_CHECK         29
+#define IDG_SLM_RECORD        30
 
 /**
  * Exit codes for console commands

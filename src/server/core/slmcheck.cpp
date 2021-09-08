@@ -119,11 +119,12 @@ void SlmCheck::compileScript()
 
 	if (m_pCompiledScript != nullptr)
 		delete m_pCompiledScript;
-   m_pCompiledScript = NXSLCompileAndCreateVM(m_script, errorMsg, errorMsgLen, new NXSL_ServerEnv);
+   //m_pCompiledScript = NXSLCompileAndCreateVM(m_script, errorMsg, errorMsgLen, new NXSL_ServerEnv);
+	m_pCompiledScript = NXSLCompile(m_script, errorMsg, errorMsgLen, nullptr);
    if (m_pCompiledScript != NULL)
    {
-      m_pCompiledScript->addConstant("OK", m_pCompiledScript->createValue((LONG)0));
-      m_pCompiledScript->addConstant("FAIL", m_pCompiledScript->createValue((LONG)1));
+      //m_pCompiledScript->addConstant("OK", m_pCompiledScript->createValue((LONG)0));
+      //m_pCompiledScript->addConstant("FAIL", m_pCompiledScript->createValue((LONG)1));
    }
    else
    {
@@ -309,39 +310,68 @@ uint32_t SlmCheck::execute(SlmTicketData* ticket)
 		case SCRIPT:
 			if (m_pCompiledScript != NULL)
 			{
-				NXSL_VariableSystem *pGlobals = NULL;
-
-				m_pCompiledScript->setGlobalVariable("$reason", m_pCompiledScript->createValue(m_reason));
-				m_pCompiledScript->setGlobalVariable("$node", getNodeObjectForNXSL(m_pCompiledScript));
-				if (m_pCompiledScript->run(0, NULL, &pGlobals))
+				NXSL_VM *script = CreateServerScriptVM(m_pCompiledScript, nullptr);
+				if (script != nullptr)
 				{
-					NXSL_Value *pValue = m_pCompiledScript->getResult();
-					m_status = (pValue->getValueAsInt32() == 0) ? STATUS_NORMAL : STATUS_CRITICAL;
-					if (m_status == STATUS_CRITICAL)
+					script->addConstant("OK", script->createValue((LONG)0));
+					script->addConstant("FAIL", script->createValue((LONG)1));
+					script->setGlobalVariable("$reason", script->createValue());
+					NXSL_VariableSystem *globals = nullptr;
+					ObjectRefArray<NXSL_Value> args(0);
+					//m_pCompiledScript->setGlobalVariable("$node", getNodeObjectForNXSL(m_pCompiledScript));
+					if (script->run(args, &globals))
 					{
-						NXSL_Variable *reason = pGlobals->find("$reason");
-						if (reason != nullptr && reason->getValue()->getValueAsCString()[0] != 0)
+						NXSL_Value *pValue = script->getResult();
+						if (pValue->getDataType() == NXSL_DT_STRING)
 						{
-							_tcslcpy(m_reason, reason->getValue()->getValueAsCString(), 256);
+							nxlog_write_tag(2, DEBUG_TAG, _T("script: %s, result is string: %s"), m_script, pValue->getValueAsCString());
+							m_status = STATUS_CRITICAL;
+							_tcslcpy(m_reason, pValue->getValueAsCString(), 256);
 						}
 						else
 						{
-							_tcslcpy(m_reason, _T("Check script returns error"), 256);
+							if (pValue->getDataType() == NXSL_DT_BOOLEAN)
+							{
+								nxlog_write_tag(2, DEBUG_TAG, _T("script: %s, result is boolean: %s"), m_script, pValue->isTrue() ? _T("true") : _T("false"));
+								m_status = pValue->isTrue() ? STATUS_NORMAL : STATUS_CRITICAL;
+							}
+							else
+							{
+								nxlog_write_tag(2, DEBUG_TAG, _T("script: %s, result is int: %d"), m_script, pValue->getValueAsInt32());
+								m_status = (pValue->getValueAsInt32() == 0) ? STATUS_NORMAL : STATUS_CRITICAL;
+							}
+							if (m_status == STATUS_CRITICAL && m_reason[0] == 0)
+							{
+								NXSL_Variable *reason = globals->find("$reason");
+								if (reason != nullptr && reason->getValue()->getValueAsCString()[0] != 0)
+								{
+									_tcslcpy(m_reason, reason->getValue()->getValueAsCString(), 256);
+								}
+								else
+								{
+									_tcslcpy(m_reason, _T("Check script returns error"), 256);
+								}
+							}
 						}
+						nxlog_write_tag(6, DEBUG_TAG, _T("SlmCheck::execute script: %s [%ld] return value %d"), m_name, (long)m_id, pValue->getValueAsInt32());
+						nxlog_write_tag(6, DEBUG_TAG, _T("SlmCheck::script: %s"), m_script);
+						delete globals;
 					}
-					nxlog_write_tag(6, DEBUG_TAG, _T("SlmCheck::execute script: %s [%ld] return value %d"), m_name, (long)m_id, pValue->getValueAsInt32());
-					nxlog_write_tag(6, DEBUG_TAG, _T("SlmCheck::script: %s"), m_script);
+					else
+					{
+						TCHAR buffer[1024];
+
+						_sntprintf(buffer, 1024, _T("ServiceCheck::%s::%d"), m_name, m_id);
+						PostSystemEvent(EVENT_SCRIPT_ERROR, g_dwMgmtNode, "ssd", buffer, script->getErrorText(), m_id);
+						nxlog_write_tag(2, DEBUG_TAG, _T("Failed to execute script for service check object %s [%u] (%s)"), m_name, m_id, script->getErrorText());
+						m_status = STATUS_UNKNOWN;
+					}
+					delete script;
 				}
 				else
 				{
-					TCHAR buffer[1024];
-
-					_sntprintf(buffer, 1024, _T("ServiceCheck::%s::%d"), m_name, m_id);
-					PostSystemEvent(EVENT_SCRIPT_ERROR, g_dwMgmtNode, "ssd", buffer, m_pCompiledScript->getErrorText(), m_id);
-			      nxlog_write_tag(2, DEBUG_TAG, _T("Failed to execute script for service check object %s [%u] (%s)"), m_name, m_id, m_pCompiledScript->getErrorText());
 					m_status = STATUS_UNKNOWN;
 				}
-				delete pGlobals;
 			}
 			else
 			{
@@ -369,9 +399,14 @@ uint32_t SlmCheck::execute(SlmTicketData* ticket)
 	if (m_status != oldStatus)
 	{
 		if (m_status == STATUS_CRITICAL)
+		{
 			insertTicket(ticket);
+		}
 		else
+		{
 			closeTicket();
+			m_reason[0] = 0;
+		}
 	}
 	return m_status;
 }

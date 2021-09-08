@@ -37,7 +37,7 @@ void LoadLastEventId(DB_HANDLE hdb);
 /**
  * Constants
  */
-#define NUMBER_OF_GROUPS   30
+#define NUMBER_OF_GROUPS   31
 
 /**
  * Static data
@@ -96,7 +96,8 @@ static const TCHAR *s_groupNames[NUMBER_OF_GROUPS] =
    _T("Geographical Areas"),
    _T("SSH Keys"),
    _T("Object Queries"),
-   _T("SLM Checks")
+   _T("SLM Checks"),
+   _T("SLM Downtime Records")
 };
 
 /**
@@ -526,12 +527,21 @@ bool InitIdTable()
       DBFreeResult(hResult);
    }
 
-   // Get first available object query id
+   // Get first available object in slm checks
    hResult = DBSelect(hdb, _T("SELECT max(id) FROM slm_checks"));
    if (hResult != nullptr)
    {
       if (DBGetNumRows(hResult) > 0)
          s_freeIdTable[IDG_SLM_CHECK] = std::max(s_freeIdTable[IDG_SLM_CHECK], DBGetFieldULong(hResult, 0, 0) + 1);
+      DBFreeResult(hResult);
+   }
+
+   // Get first available object in slm downtime records
+   hResult = DBSelect(hdb, _T("SELECT max(record_id) FROM slm_service_downtime"));
+   if (hResult != nullptr)
+   {
+      if (DBGetNumRows(hResult) > 0)
+         s_freeIdTable[IDG_SLM_RECORD] = std::max(s_freeIdTable[IDG_SLM_RECORD], DBGetFieldULong(hResult, 0, 0) + 1);
       DBFreeResult(hResult);
    }
 

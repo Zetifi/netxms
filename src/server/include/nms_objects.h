@@ -4378,7 +4378,7 @@ protected:
    uint32_t m_status;
    int m_type;
    TCHAR *m_script;
-   NXSL_VM *m_pCompiledScript;
+   NXSL_Program *m_pCompiledScript;
    TCHAR m_reason[256];
    uint32_t m_id;
    TCHAR m_name[1023];
@@ -4460,12 +4460,6 @@ protected:
    bool m_pollingDisabled;
    time_t m_lastPollTime;
 
-   /*TCHAR *m_autobindDCIScript;
-   bool m_autoBindDCIFlag;
-   bool m_autoUnbindDCIFlag;
-   TCHAR *m_autobindObjectScript;
-   bool m_autoBindObjectFlag;
-   bool m_autoUnbindObjectFlag;*/
    uint32_t m_objectStatusThreshhold;
    uint32_t m_dciStatusThreshhold;
    uint32_t m_prototypeId;
@@ -4501,6 +4495,7 @@ class NXCORE_EXPORTABLE BusinessService : public BaseBusinessService
 protected:
    PollState m_statusPollState;
    PollState m_configurationPollState;
+   uint32_t m_lastPollStatus;
 
    void updateSLMChecks();
    MUTEX m_hPollerMutex;

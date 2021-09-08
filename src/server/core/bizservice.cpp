@@ -430,6 +430,8 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
 	nxlog_debug_tag(DEBUG_TAG, 5, _T("Started polling of business service %s [%d]"), m_name, (int)m_id);
    sendPollerMsg(_T("Started status poll of business service %s [%d] \r\n"), m_name, (int)m_id);
 	m_lastPollTime = time(nullptr);
+   uint32_t lastPollStatus = m_status;
+   m_status = STATUS_NORMAL;
 
 	// Loop through the kids and execute their either scripts or thresholds
    readLockChildList();
@@ -465,7 +467,34 @@ void BusinessService::statusPoll(PollerInfo *poller, ClientSession *session, UIN
       }
 	}
 
-	//m_lastPollStatus = m_status;
+   if(m_status > lastPollStatus)
+   {
+      DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+      DB_STATEMENT hStmt = DBPrepare(hdb, _T("INSERT INTO slm_service_downtime (record_id,service_id,from_timestamp,to_timestamp) VALUES (?,?,?,0)"));
+      if (hStmt != NULL)
+      {
+         DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, CreateUniqueId(IDG_SLM_RECORD));
+         DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_id);
+         DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, (uint32_t)time(nullptr));
+         DBExecute(hStmt);
+         DBFreeStatement(hStmt);
+      }
+      DBConnectionPoolReleaseConnection(hdb);
+   }
+   if(m_status < lastPollStatus)
+   {
+      DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+      DB_STATEMENT hStmt = DBPrepare(hdb, _T("UPDATE slm_service_downtime SET to_timestamp=? WHERE service_id=? AND to_timestamp=0"));
+      if (hStmt != NULL)
+      {
+         DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, (uint32_t)time(nullptr));
+         DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_id);
+         DBExecute(hStmt);
+         DBFreeStatement(hStmt);
+      }
+      DBConnectionPoolReleaseConnection(hdb);
+   }
+
    sendPollerMsg(_T("Finished status polling of business service %s [%d] \r\n"), m_name, (int)m_id);
 	nxlog_debug_tag(DEBUG_TAG, 5, _T("Finished status polling of business service %s [%d]"), m_name, (int)m_id);
 	m_busy = false;
@@ -785,12 +814,12 @@ double GetServiceUptime(uint32_t serviceId, time_t from, time_t to)
    DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
    if (hdb)
    {
-      DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT from_timestamp,to_timestamp FROM slm_service_history ")
+      DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT from_timestamp,to_timestamp FROM slm_service_downtime ")
                                           _T("WHERE service_id=? AND "
                                              "((from_timestamp BETWEEN ? AND ? OR to_timestamp BETWEEN ? and ?) OR (from_timestamp<? AND ( to_timestamp=0 OR to_timestamp>? )))"));
       if (hStmt == NULL)
       {
-         nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from slm_service_history"));
+         nxlog_debug_tag(DEBUG_TAG, 4, _T("Cannot prepare select from slm_service_downtime"));
       }
 		else
 		{
@@ -1037,7 +1066,7 @@ void BusinessServicePrototype::instanceDiscoveryPoll(PollerInfo *poller, ClientS
       for (auto it = services->begin(); it.hasNext(); )
       {
          int index = instances->indexOf(it.next()->getInstance());
-         if(index >= 0)
+         if (index >= 0)
          {
             it.remove();
             instances->remove(index);
