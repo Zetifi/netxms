@@ -868,7 +868,7 @@ double GetServiceUptime(uint32_t serviceId, time_t from, time_t to)
                time_t downtime = (to_timestamp > to ? to : to_timestamp) - (from_timestamp < from ? from : from_timestamp);
                totalUptime -= downtime;
             }
-            double res = (double)totalUptime / (double)((to - from) / 100);
+            res = (double)totalUptime / (double)((to - from) / 100);
             DBFreeResult(hResult);
          }
          DBFreeStatement(hStmt);
@@ -905,14 +905,15 @@ void GetServiceTickets(uint32_t serviceId, time_t from, time_t to, NXCPMessage* 
             int count = DBGetNumRows(hResult);
             for (int i = 0; i < count; i++)
             {
-               uint32_t ticket_id = DBGetFieldUInt64(hResult, i, 1);
-               uint32_t original_ticket_id = DBGetFieldUInt64(hResult, i, 2);
-               uint32_t original_service_id = DBGetFieldUInt64(hResult, i, 3);
-               uint32_t check_id = DBGetFieldUInt64(hResult, i, 4);
-               time_t create_timestamp = DBGetFieldUInt64(hResult, i, 5);
-               time_t close_timestamp = DBGetFieldUInt64(hResult, i, 6);
+               uint32_t ticket_id = DBGetFieldULong(hResult, i, 0);
+               uint32_t original_ticket_id = DBGetFieldULong(hResult, i, 1);
+               uint32_t original_service_id = DBGetFieldULong(hResult, i, 2);
+               uint32_t check_id = DBGetFieldLong(hResult, i, 3);
+               time_t create_timestamp = DBGetFieldULong(hResult, i, 4);
+               time_t close_timestamp = DBGetFieldULong(hResult, i, 5);
                TCHAR reason[256];
-               DBGetField(hResult, i, 7, reason, 256);
+               DBGetField(hResult, i, 6, reason, 256);
+               _tprintf(_T("####%d %d"), ticket_id, original_ticket_id);
 
                msg->setField(VID_SLM_TICKETS_LIST_BASE + ( i * 10 ),     original_ticket_id != 0 ? original_ticket_id : ticket_id);
                msg->setField(VID_SLM_TICKETS_LIST_BASE + ( i * 10 ) + 1, original_ticket_id != 0 ? original_service_id : serviceId);

@@ -409,7 +409,7 @@ public class BusinessServiceChecksView extends ObjectView
    @Override
    public void dispose()
    {
-      session.removeListener(sessionListener);
+      //session.removeListener(sessionListener);
       super.dispose();
    }
 }

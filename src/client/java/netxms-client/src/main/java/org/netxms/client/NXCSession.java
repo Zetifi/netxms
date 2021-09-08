@@ -70,6 +70,7 @@ import org.netxms.base.VersionInfo;
 import org.netxms.client.agent.config.AgentConfiguration;
 import org.netxms.client.agent.config.AgentConfigurationHandle;
 import org.netxms.client.businessservices.ServiceCheck;
+import org.netxms.client.businessservices.SlmTicket;
 import org.netxms.client.constants.AggregationFunction;
 import org.netxms.client.constants.AuthenticationType;
 import org.netxms.client.constants.DataOrigin;
@@ -12758,5 +12759,55 @@ public class NXCSession
       check.fillMessage(msg);
       sendMessage(msg);
       waitForRCC(msg.getMessageId());
-   }   
+   }  
+   
+   /**  
+    * Get business service availability
+    * 
+    * @param businessServiceid business service id 
+    * @param timePeriod time period
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public double getSlmAvailablity(long businessServiceid, TimePeriod timePeriod) throws NXCException, IOException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_GET_SLM_DATA);
+      msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)businessServiceid);
+      msg.setField(NXCPCodes.VID_TIME_FROM, timePeriod.getPeriodStart());
+      msg.setField(NXCPCodes.VID_TIME_TO, timePeriod.getPeriodEnd());
+      sendMessage(msg);
+      NXCPMessage response = waitForRCC(msg.getMessageId());
+      return response.getFieldAsDouble(NXCPCodes.VID_BUSINESS_SERVICE_UPTIME);
+   }  
+   
+   /**  
+    * Get business service tickets
+    * 
+    * @param businessServiceid business service id 
+    * @param timePeriod time period
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public List<SlmTicket> getSlmTickets(long businessServiceid, TimePeriod timePeriod) throws NXCException, IOException
+   {
+
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_GET_SLM_TICKETS);
+      msg.setFieldInt32(NXCPCodes.VID_OBJECT_ID, (int)businessServiceid);
+      msg.setField(NXCPCodes.VID_TIME_FROM, timePeriod.getPeriodStart());
+      msg.setField(NXCPCodes.VID_TIME_TO, timePeriod.getPeriodEnd());
+      sendMessage(msg);
+      NXCPMessage response = waitForRCC(msg.getMessageId());
+      List<SlmTicket> tickets = new ArrayList<SlmTicket>();
+      int count = response.getFieldAsInt32(NXCPCodes.VID_SLM_TICKETS_COUNT);
+      long base = NXCPCodes.VID_SLM_TICKETS_LIST_BASE;      
+      for (int i= 0; i < count; i++)
+      {
+         SlmTicket ticket = new SlmTicket(response, base);
+         tickets.add(ticket);
+         base +=10;
+         System.out.println(base);
+         System.out.println(response.getFieldAsInt32(base));
+      }
+      return tickets;
+   } 
 }

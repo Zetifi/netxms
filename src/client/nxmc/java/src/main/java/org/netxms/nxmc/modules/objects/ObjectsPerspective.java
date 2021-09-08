@@ -38,6 +38,7 @@ import org.netxms.nxmc.base.views.Perspective;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.alarms.views.AlarmsView;
+import org.netxms.nxmc.modules.businessservice.views.BusinessServiceAvailabilityView;
 import org.netxms.nxmc.modules.businessservice.views.BusinessServiceChecksView;
 import org.netxms.nxmc.modules.datacollection.views.DataCollectionView;
 import org.netxms.nxmc.modules.datacollection.views.PerformanceView;
@@ -111,6 +112,7 @@ public abstract class ObjectsPerspective extends Perspective
       addMainView(new SwitchForwardingDatabaseView());
       addMainView(new MibExplorer());
       addMainView(new BusinessServiceChecksView());
+      addMainView(new BusinessServiceAvailabilityView());
    }
 
    /**

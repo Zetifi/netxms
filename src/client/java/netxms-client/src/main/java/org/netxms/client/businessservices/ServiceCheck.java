@@ -73,7 +73,7 @@ public class ServiceCheck
 
 	/**
 	 * @param msg
-	 * @param session
+	 * @param base
 	 */
 	public ServiceCheck(NXCPMessage msg, long base)
 	{
