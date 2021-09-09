@@ -12805,8 +12805,6 @@ public class NXCSession
          SlmTicket ticket = new SlmTicket(response, base);
          tickets.add(ticket);
          base +=10;
-         System.out.println(base);
-         System.out.println(response.getFieldAsInt32(base));
       }
       return tickets;
    } 

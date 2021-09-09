@@ -32,7 +32,7 @@ public class BusinessServicesPerspective extends ObjectsPerspective
 
    public BusinessServicesPerspective()
    {
-      super("Business Services", i18n.tr("Business Services"), ResourceManager.getImage("icons/perspective-dashboards.png"), SubtreeType.BUSINESS_SERVICES);
+      super("Business Services", i18n.tr("Business Services"), ResourceManager.getImage("icons/perspective-business-service.png"), SubtreeType.BUSINESS_SERVICES);
    }
 
    /**

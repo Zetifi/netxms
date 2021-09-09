@@ -108,11 +108,13 @@ public class AutoBindBusinessService extends ObjectPropertyPage
 					filterSource.setEnabled(true);
 					filterSource.setFocus();
 					checkboxEnableUnbind.setEnabled(true);
+               thresholdCombo.setEnabled(true);
 				}
 				else
 				{
 					filterSource.setEnabled(false);
 					checkboxEnableUnbind.setEnabled(false);
+               thresholdCombo.setEnabled(false);
 				}
 			}
       });

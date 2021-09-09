@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2021 Victor Kirhenshtein
+ * Copyright (C) 2003-2021 Reden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@ import java.util.List;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
@@ -52,6 +54,7 @@ import org.netxms.nxmc.modules.charts.api.ChartType;
 import org.netxms.nxmc.modules.charts.widgets.Chart;
 import org.netxms.nxmc.modules.objects.views.ObjectView;
 import org.netxms.nxmc.resources.ResourceManager;
+import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -231,6 +234,15 @@ public class BusinessServiceAvailabilityView extends ObjectView
       ticketViewer.setLabelProvider(new SlmTicketLabelProvider());
       ticketViewer.setComparator(new SlmTicketComparator());
       
+      WidgetHelper.restoreColumnSettings(ticketViewer.getTable(), ID);
+      ticketViewer.getTable().addDisposeListener(new DisposeListener() {
+         @Override
+         public void widgetDisposed(DisposeEvent e)
+         {
+            WidgetHelper.saveColumnSettings(ticketViewer.getTable(), ID);
+         }
+      });
+      
       gd = new GridData();
       gd.grabExcessHorizontalSpace = true;
       gd.horizontalAlignment = SWT.FILL;
@@ -253,6 +265,7 @@ public class BusinessServiceAvailabilityView extends ObjectView
    {
       ticketViewer.setInput(new Object[0]);
       //TODO: clear chart
+      //TODO: hangs on negative value in chart
    }
 
    @Override

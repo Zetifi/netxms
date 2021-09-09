@@ -276,10 +276,10 @@ public class GeneralInfo extends TableElement
             addPair(i18n.tr("Zone UIN"), Long.toString(zone.getUIN()));
 				break;
 			case AbstractObject.OBJECT_BUSINESSSERVICE_PROTOTYPE:
-            addPair(i18n.tr("Is Prorotype"), i18n.tr("Yes"));
+            addPair(i18n.tr("Is Prototype"), i18n.tr("Yes"));
             break;
 			case AbstractObject.OBJECT_BUSINESSSERVICE:
-            addPair(i18n.tr("Is Prorotype"), i18n.tr("No"));
+            addPair(i18n.tr("Is Prototype"), i18n.tr("No"));
 				break;
 			default:
 				break;

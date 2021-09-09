@@ -18,7 +18,6 @@
  */
 package org.netxms.nxmc.modules.businessservice.propertypages;
 
-import java.util.Arrays;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionEvent;
@@ -48,9 +47,6 @@ import org.xnap.commons.i18n.I18n;
 public class InstanceDiscovery extends ObjectPropertyPage
 {
    private static final I18n i18n = LocalizationHelper.getI18n(InstanceDiscovery.class);   
-	private static final String[] DCI_FUNCTIONS = { "FindDCIByName", "FindDCIByDescription", "GetDCIObject", "GetDCIValue", "GetDCIValueByDescription", "GetDCIValueByName" }; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$
-	private static final String[] DCI_VARIABLES = { "$dci", "$node" }; //$NON-NLS-1$ //$NON-NLS-2$
-	
 	private Combo discoveryMethod;
 	private LabeledText discoveryData;
 	private ScriptEditor filterScript;
@@ -119,13 +115,11 @@ public class InstanceDiscovery extends ObjectPropertyPage
 			public Control createControl(Composite dialogArea, int style)
 			{
 				return new ScriptEditor(dialogArea, style, SWT.H_SCROLL | SWT.V_SCROLL, false, 
-				      "Variables:\r\n\t$1\t\t\tInstance to test;\r\n\t$2\t\t\tInstance data (value for given OID for SNMP Walk - OIDs method, secondary value for Script method);\r\n\t$dci\t\tthis DCI object;\r\n\t$isCluster\ttrue if DCI is on cluster;\r\n\t$node\t\tcurrent node object (null if DCI is not on the node);\r\n\t$object\t\tcurrent object.\r\n\r\nReturn value:\r\n\ttrue/false to accept or reject instance without additional changes or\r\n\tarray of two or three elements to modify instance:\r\n\t\t1st element - true/false to indicate acceptance;\r\n\t\t2nd element - new instance name;\r\n\t\t3rd element - new instance display name.");
+				      "Variables:\r\n\t$1\t\t\tInstance to test;\r\n\t$2\t\t\tInstance data (secondary value for Script method);\r\n\t$businessService\t\tthis business service prototype object;\r\n\r\nReturn value:\r\n\ttrue/false to accept or reject instance without additional changes or\r\n\tarray of two or three elements to modify instance:\r\n\t\t1st element - true/false to indicate acceptance;\r\n\t\t2nd element - new instance name;\r\n\t\t3rd element - new instance display name.");
 			}
       };
       filterScript = (ScriptEditor)WidgetHelper.createLabeledControl(dialogArea, SWT.BORDER,
             factory, i18n.tr("Instance discovery filter script"), gd);
-      filterScript.addFunctions(Arrays.asList(DCI_FUNCTIONS));
-      filterScript.addVariables(Arrays.asList(DCI_VARIABLES));
       gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
       gd.verticalAlignment = SWT.FILL;
