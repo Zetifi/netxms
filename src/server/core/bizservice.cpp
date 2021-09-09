@@ -863,8 +863,10 @@ double GetServiceUptime(uint32_t serviceId, time_t from, time_t to)
             int count = DBGetNumRows(hResult);
             for (int i = 0; i < count; i++)
             {
-               time_t from_timestamp = DBGetFieldUInt64(hResult, i, 1);
-               time_t to_timestamp = DBGetFieldUInt64(hResult, i, 2);
+               time_t from_timestamp = DBGetFieldUInt64(hResult, i, 0);
+               time_t to_timestamp = DBGetFieldUInt64(hResult, i, 1);
+               if(to_timestamp == 0)
+                  to_timestamp = to;
                time_t downtime = (to_timestamp > to ? to : to_timestamp) - (from_timestamp < from ? from : from_timestamp);
                totalUptime -= downtime;
             }
