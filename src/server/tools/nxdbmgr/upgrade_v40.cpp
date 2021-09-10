@@ -215,7 +215,20 @@ static bool H_UpgradeFromV68()
 
             _sntprintf(query, 1024, _T("UPDATE container_members SET container_id=%d WHERE container_id=%d"),
                   parentId, nodeLinkId);
+            if (!SQLQuery(query) && !g_ignoreErrors)
+            {
+               return false;
+            }
 
+            _sntprintf(query, 1024, _T("UPDATE slm_service_history SET service_id=%d WHERE service_id=%d"),
+                  parentId, nodeLinkId);
+            if (!SQLQuery(query) && !g_ignoreErrors)
+            {
+               return false;
+            }
+
+            _sntprintf(query, 1024, _T("UPDATE slm_tickets SET service_id=%d WHERE service_id=%d"),
+                  parentId, nodeLinkId);
             if (!SQLQuery(query) && !g_ignoreErrors)
             {
                return false;

@@ -181,7 +181,7 @@ public class BusinessServiceAvailabilityView extends ObjectView
       dateTimeSelector = new TimePeriodSelector(timeSelectorGroup, SWT.NONE, new TimePeriod(TimeFrameType.BACK_FROM_NOW, 30, TimeUnit.DAY, null, null));    
       
       buttonSelect = new Button(timeSelectorGroup, SWT.PUSH);
-      buttonSelect.setText(i18n.tr("Select"));
+      buttonSelect.setText(i18n.tr("Query"));
       buttonSelect.addSelectionListener(new SelectionListener() {         
          @Override
          public void widgetSelected(SelectionEvent arg0)
@@ -264,8 +264,8 @@ public class BusinessServiceAvailabilityView extends ObjectView
    protected void onObjectChange(AbstractObject object)
    {
       ticketViewer.setInput(new Object[0]);
-      //TODO: clear chart
-      //TODO: hangs on negative value in chart
+      chart.clearParameters();
+      chart.refresh();      
    }
 
    @Override
