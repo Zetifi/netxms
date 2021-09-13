@@ -79,6 +79,8 @@ public class InstanceDiscovery extends ObjectPropertyPage
       discoveryMethod = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Instance discovery method"),
                                                          WidgetHelper.DEFAULT_LAYOUT_DATA);
       discoveryMethod.add(i18n.tr("Script"));
+      discoveryMethod.add(i18n.tr("Agent List"));
+      discoveryMethod.add(i18n.tr("Agent Table"));
       discoveryMethod.select(prototype.getInstanceDiscoveryMethod());
       discoveryMethod.addSelectionListener(new SelectionListener() {
 			@Override

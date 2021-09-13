@@ -63,7 +63,9 @@ public class CreateBusinessServicePrototype extends Dialog
       nameField.setLayoutData(gd);
 
       instanceDiscoveyMethodCombo = WidgetHelper.createLabeledCombo(dialogArea, SWT.READ_ONLY, i18n.tr("Instance discovery type"), new GridData(SWT.FILL, SWT.CENTER, true, false));
-      instanceDiscoveyMethodCombo.add("Script");
+      instanceDiscoveyMethodCombo.add(i18n.tr("Script"));
+      instanceDiscoveyMethodCombo.add(i18n.tr("Agent List"));
+      instanceDiscoveyMethodCombo.add(i18n.tr("Agent Table"));
       instanceDiscoveyMethodCombo.select(0);
       
       return dialogArea;
