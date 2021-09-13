@@ -1790,12 +1790,11 @@ struct FilePartInfo
 static void PrepareFilePartsList(const TCHAR *localFile, const TCHAR *destinationFile, StringList *partNames, StructArray<FilePartInfo> *fileInfo)
 {
    uint64_t sz = FileSize(localFile);
-   const TCHAR *fileName = (destinationFile == nullptr) || (*destinationFile == 0) ? localFile : destinationFile;
    for(int i = 0; sz > 0; i++)
    {
       struct FilePartInfo info;
       TCHAR partFileName[MAX_PATH];
-      _sntprintf(partFileName, MAX_PATH, _T("%s%s%d"), fileName, _T(".part"), i);
+      _sntprintf(partFileName, MAX_PATH, _T("%s%s%d"), destinationFile, _T(".part"), i);
       info.m_name = MemCopyString(partFileName);
       partNames->add(partFileName);
       const uint32_t FILE_PART_SIZE = 1024 * 1024;
@@ -1820,16 +1819,48 @@ static void PrepareFilePartsList(const TCHAR *localFile, const TCHAR *destinatio
 uint32_t AgentConnection::uploadFile(const TCHAR *localFile, const TCHAR *destinationFile, bool allowPathExpansion,
          void (* progressCallback)(size_t, void *), void *cbArg, NXCPStreamCompressionMethod compMethod)
 {
-   uint32_t rcc;
+   uint32_t rcc = ERR_SUCCESS;
    if (m_fileResumingEnabled)
    {
       StringList partNames;
       StructArray<FilePartInfo> partInfo;
       ObjectArray<RemoteFileInfo> *remoteFiles = nullptr;
-      PrepareFilePartsList(localFile, destinationFile, &partNames, &partInfo);
-      rcc = getFileSetInfo(partNames, allowPathExpansion, &remoteFiles);
-      bool forceBasicUpload = rcc == ERR_UNKNOWN_COMMAND;
-      if (rcc == ERR_SUCCESS || forceBasicUpload)
+      bool useBasicUpload = destinationFile == nullptr; // Sometimes we don't want to use File Manager, even if we can
+      const TCHAR* destFile = nullptr;
+      if (useBasicUpload)
+      {
+         destFile = _tcsrchr(localFile, '/');
+         if (destFile != nullptr)
+         {
+            destFile = destFile + 1;
+         }
+         else
+         {
+            destFile = _tcsrchr(localFile, '\\');
+            if (destFile != nullptr)
+            {
+               destFile = destFile + 1;
+            }
+            else
+            {
+               destFile = localFile;
+            }
+         }
+      }
+      else
+      {
+         destFile = destinationFile;
+      }
+      PrepareFilePartsList(localFile, destFile, &partNames, &partInfo);
+
+      if (!useBasicUpload)
+      {
+         rcc = getFileSetInfo(partNames, allowPathExpansion, &remoteFiles);
+         if (rcc == ERR_UNKNOWN_COMMAND) // Can't find File Manager on client, using basic upload instead
+            useBasicUpload = true;
+      }
+
+      if (rcc == ERR_SUCCESS || useBasicUpload)
       {
          for (int i = 0; i < partNames.size(); i++)
          {
@@ -1853,7 +1884,7 @@ uint32_t AgentConnection::uploadFile(const TCHAR *localFile, const TCHAR *destin
             }
             if (!found)
             {
-               rcc = uploadFileInternal(localFile, partInfo.get(i)->m_name, allowPathExpansion, progressCallback, cbArg, compMethod, partInfo.get(i)->m_offset, partInfo.get(i)->m_size, forceBasicUpload);
+               rcc = uploadFileInternal(localFile, localFilePart->m_name, allowPathExpansion, progressCallback, cbArg, compMethod, localFilePart->m_offset, localFilePart->m_size, useBasicUpload);
                if (rcc != ERR_SUCCESS)
                   break;
             }
@@ -1871,20 +1902,16 @@ uint32_t AgentConnection::uploadFile(const TCHAR *localFile, const TCHAR *destin
          request.setId(generateRequestId());
 
          // Use core agent if destination file name is not set and file manager subagent otherwise
-         if ((destinationFile == nullptr) || (*destinationFile == 0))
+         if (useBasicUpload)
          {
             request.setCode(CMD_MERGE_FILES);
-            int i;
-            for (i = (int)_tcslen(localFile) - 1;
-               (i >= 0) && (localFile[i] != '\\') && (localFile[i] != '/'); i--);
-            request.setField(VID_DESTINATION_FILE_NAME, &localFile[i + 1]);
          }
          else
          {
             request.setCode(CMD_FILEMGR_MERGE_FILES);
-            request.setField(VID_DESTINATION_FILE_NAME, destinationFile);
          }
 
+         request.setField(VID_DESTINATION_FILE_NAME, destFile);
          partNames.fillMessage(&request, VID_FILE_LIST_BASE, VID_FILE_COUNT);
          BYTE hash[MD5_DIGEST_SIZE];
          CalculateFileMD5Hash(localFile, hash);
