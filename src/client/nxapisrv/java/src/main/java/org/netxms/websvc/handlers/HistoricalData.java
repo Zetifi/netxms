@@ -21,6 +21,8 @@ package org.netxms.websvc.handlers;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
+
 import org.netxms.client.NXCException;
 import org.netxms.client.NXCSession;
 import org.netxms.client.constants.HistoricalDataType;
@@ -30,12 +32,21 @@ import org.netxms.client.datacollection.DciData;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.DataCollectionTarget;
 import org.netxms.websvc.json.ResponseContainer;
+import org.netxms.client.datacollection.DataCollectionItem;
+import org.netxms.client.datacollection.DataCollectionObject;
+import org.netxms.client.datacollection.DataCollectionItem;
+import org.netxms.client.datacollection.DataCollectionTable;
+import org.netxms.client.datacollection.DataCollectionConfiguration;
+import org.netxms.client.Table;
+import org.netxms.client.TableColumnDefinition;
+import org.netxms.client.TableRow;
 
 /**
  * Objects request handler
  */
 public class HistoricalData extends AbstractObjectHandler
 {
+
    /**
     * @see org.netxms.websvc.handlers.AbstractHandler#get(java.lang.String)
     */
@@ -56,44 +67,107 @@ public class HistoricalData extends AbstractObjectHandler
 
       if ((object == null) || (dciId == 0) || !(object instanceof DataCollectionTarget))
          throw new NXCException(RCC.INVALID_OBJECT_ID);
-      
       String timeFrom = query.get("from");
       String timeTo = query.get("to");
-      String timeInteval = query.get("timeInterval");
+      String timeInterval = query.get("timeInterval");
       String itemCount = query.get("itemCount");
 
-      DciData data = null;
+      DataCollectionConfiguration dataCollectionConfiguration = session.openDataCollectionConfiguration(getObjectId());
+      DataCollectionObject dataCollectionObject = dataCollectionConfiguration.findItem(dciId);
 
-      if (timeFrom != null || timeTo != null)
+      if (dataCollectionObject instanceof DataCollectionItem) 
       {
-         data = session.getCollectedData(object.getObjectId(), dciId,
-               new Date(parseLong(timeFrom, 0) * 1000), new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000),
-               parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
-      }
-      else if (timeInteval != null)
-      {
-         Date now = new Date();
-         long from = now.getTime() - parseLong(timeInteval, 0) * 1000;
-         data  = session.getCollectedData(object.getObjectId(), dciId, new Date(from), new Date(), parseInt(itemCount, 0), HistoricalDataType.PROCESSED);         
-      }
-      else if (itemCount != null)
-      {         
-         data  = session.getCollectedData(object.getObjectId(), dciId, null, null, parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
-      }  
-      else
-      {
-         Date now = new Date();
-         long from = now.getTime() - 3600000; // one hour
-         data  = session.getCollectedData(object.getObjectId(), dciId, new Date(from), now, parseInt(itemCount, 0), HistoricalDataType.PROCESSED);           
-      }
+         DciData data = null;
 
-      return new ResponseContainer("values", data);
+         if (timeFrom != null || timeTo != null) 
+         {
+            data = session.getCollectedData(object.getObjectId(), dciId,
+             new Date(parseLong(timeFrom, 0) * 1000), new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000),
+             parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
+         } 
+         else if (timeInterval != null) 
+         {
+            Date now = new Date();
+            long from = now.getTime() - parseLong(timeInterval, 0) * 1000;
+            data = session.getCollectedData(object.getObjectId(), dciId, new Date(from), new Date(), parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
+         } 
+         else if (itemCount != null) 
+         {
+            data = session.getCollectedData(object.getObjectId(), dciId, null, null, parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
+         }
+         else 
+         {
+            Date now = new Date();
+            long from = now.getTime() - 3600000; // one hour
+            data = session.getCollectedData(object.getObjectId(), dciId, new Date(from), now, parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
+         }
+
+         return new ResponseContainer("values", data);
+      }
+      else if (dataCollectionObject instanceof DataCollectionTable)
+      {
+         ArrayList<HashMap<Object, Object>> tableData = new ArrayList<HashMap<Object, Object>>();
+         Date dateTimeFrom = null;
+         Date dateTimeTo = null;
+         if (timeFrom != null || timeTo != null)
+         {
+            dateTimeFrom = new Date(parseLong(timeFrom, 0) * 1000);
+            dateTimeTo = new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000);
+         }
+         else if (timeInterval != null)
+         {
+            dateTimeTo = new Date();
+            dateTimeFrom = new Date(dateTimeTo.getTime() - parseLong(timeInterval, 0) * 1000);
+         }
+         Table table = session.getTableLastValues(getObjectId(), dciId);
+         ArrayList<String> tableDciInstances = getTableDciInstances(table);
+         for (String instance : tableDciInstances)
+         {
+            HashMap<Object, Object> rowResult = new HashMap<Object, Object>();
+            for (TableColumnDefinition tableColumnDefinition : table.getColumns())
+            {
+               DciData tableCellData = null;
+               String tableColumnName = tableColumnDefinition.getName();
+               tableCellData = session.getCollectedTableData(object.getObjectId(), dciId, instance, tableColumnName,
+                     dateTimeFrom, dateTimeTo, parseInt(itemCount, 0));
+               rowResult.put(tableColumnName, tableCellData);
+            }
+            tableData.add(rowResult);
+         }
+         return new ResponseContainer("values", tableData);
+      }
+      return new ResponseContainer("values", null);
    }
 
    /**
+    * Get the instance column values for a given table
+    * supports only dci table with a single instance column
+    */
+   private ArrayList<String> getTableDciInstances(Table table) throws Exception
+   {
+      ArrayList<String> instances = new ArrayList<String>();
+      String instanceColumnName = null;
+      for (TableColumnDefinition tableColumnDefinition : table.getColumns())
+      {
+         if (tableColumnDefinition.isInstanceColumn()) {
+            instanceColumnName = tableColumnDefinition.getName();
+            break;
+         }
+         throw new Exception("Incompatible operation");
+      }
+      for (TableRow row : table.getAllRows())
+      {
+         instances.add(row.getValue(table.getColumnIndex(instanceColumnName)));
+      }
+      return instances;
+   }
+
+   // This code is unreachable as it doesn't have an endpoint
+   /**
     * @see org.netxms.websvc.handlers.AbstractHandler#getCollection(java.util.Map)
     */
-   @Override protected Object getCollection(Map<String, String> query) throws Exception
+   @Override
+   protected Object getCollection(Map<String, String> query) throws Exception
    {
       NXCSession session = getSession();
 
