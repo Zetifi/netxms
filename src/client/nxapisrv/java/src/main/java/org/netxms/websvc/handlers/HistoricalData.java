@@ -18,28 +18,25 @@
  */
 package org.netxms.websvc.handlers;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList;
 
 import org.netxms.client.NXCException;
 import org.netxms.client.NXCSession;
+import org.netxms.client.Table;
+import org.netxms.client.TableColumnDefinition;
 import org.netxms.client.constants.HistoricalDataType;
 import org.netxms.client.constants.RCC;
-import org.netxms.client.constants.TimeUnit;
+import org.netxms.client.datacollection.DataCollectionConfiguration;
+import org.netxms.client.datacollection.DataCollectionObject;
+import org.netxms.client.datacollection.DataCollectionTable;
 import org.netxms.client.datacollection.DciData;
+import org.netxms.client.datacollection.DciDataRow;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.DataCollectionTarget;
 import org.netxms.websvc.json.ResponseContainer;
-import org.netxms.client.datacollection.DataCollectionItem;
-import org.netxms.client.datacollection.DataCollectionObject;
-import org.netxms.client.datacollection.DataCollectionItem;
-import org.netxms.client.datacollection.DataCollectionTable;
-import org.netxms.client.datacollection.DataCollectionConfiguration;
-import org.netxms.client.Table;
-import org.netxms.client.TableColumnDefinition;
-import org.netxms.client.TableRow;
 
 /**
  * Objects request handler
@@ -56,7 +53,7 @@ public class HistoricalData extends AbstractObjectHandler
       NXCSession session = getSession();
       AbstractObject object = getObject();
       long dciId = 0;
-      try 
+      try
       {
          dciId = Long.parseLong(id);
       }
@@ -72,158 +69,187 @@ public class HistoricalData extends AbstractObjectHandler
       String timeInterval = query.get("timeInterval");
       String itemCount = query.get("itemCount");
 
+      DciData data = null;
       DataCollectionConfiguration dataCollectionConfiguration = session.openDataCollectionConfiguration(getObjectId());
       DataCollectionObject dataCollectionObject = dataCollectionConfiguration.findItem(dciId);
+      HistoricalDataType valueType = HistoricalDataType.PROCESSED;
 
-      if (dataCollectionObject instanceof DataCollectionItem) 
+      if (dataCollectionObject instanceof DataCollectionTable)
       {
-         DciData data = null;
-
-         if (timeFrom != null || timeTo != null) 
-         {
-            data = session.getCollectedData(object.getObjectId(), dciId,
-             new Date(parseLong(timeFrom, 0) * 1000), new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000),
-             parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
-         } 
-         else if (timeInterval != null) 
-         {
-            Date now = new Date();
-            long from = now.getTime() - parseLong(timeInterval, 0) * 1000;
-            data = session.getCollectedData(object.getObjectId(), dciId, new Date(from), new Date(), parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
-         } 
-         else if (itemCount != null) 
-         {
-            data = session.getCollectedData(object.getObjectId(), dciId, null, null, parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
-         }
-         else 
-         {
-            Date now = new Date();
-            long from = now.getTime() - 3600000; // one hour
-            data = session.getCollectedData(object.getObjectId(), dciId, new Date(from), now, parseInt(itemCount, 0), HistoricalDataType.PROCESSED);
-         }
-
-         return new ResponseContainer("values", data);
+         valueType = HistoricalDataType.FULL_TABLE;
       }
-      else if (dataCollectionObject instanceof DataCollectionTable)
+
+      if (timeFrom != null || timeTo != null)
       {
-         ArrayList<HashMap<Object, Object>> tableData = new ArrayList<HashMap<Object, Object>>();
-         Date dateTimeFrom = null;
-         Date dateTimeTo = null;
-         if (timeFrom != null || timeTo != null)
-         {
-            dateTimeFrom = new Date(parseLong(timeFrom, 0) * 1000);
-            dateTimeTo = new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000);
-         }
-         else if (timeInterval != null)
-         {
-            dateTimeTo = new Date();
-            dateTimeFrom = new Date(dateTimeTo.getTime() - parseLong(timeInterval, 0) * 1000);
-         }
-         Table table = session.getTableLastValues(getObjectId(), dciId);
-         ArrayList<String> tableDciInstances = getTableDciInstances(table);
-         for (String instance : tableDciInstances)
-         {
-            HashMap<Object, Object> rowResult = new HashMap<Object, Object>();
-            for (TableColumnDefinition tableColumnDefinition : table.getColumns())
-            {
-               DciData tableCellData = null;
-               String tableColumnName = tableColumnDefinition.getName();
-               tableCellData = session.getCollectedTableData(object.getObjectId(), dciId, instance, tableColumnName,
-                     dateTimeFrom, dateTimeTo, parseInt(itemCount, 0));
-               rowResult.put(tableColumnName, tableCellData);
-            }
-            tableData.add(rowResult);
-         }
-         return new ResponseContainer("values", tableData);
+         data = session.getCollectedData(object.getObjectId(), dciId,
+               new Date(parseLong(timeFrom, 0) * 1000), new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000),
+               parseInt(itemCount, 0), valueType);
       }
-      return new ResponseContainer("values", null);
+      else if (timeInterval != null)
+      {
+         Date now = new Date();
+         long from = now.getTime() - parseLong(timeInterval, 0) * 1000;
+         data = session.getCollectedData(object.getObjectId(), dciId, new Date(from), new Date(), parseInt(itemCount, 0), valueType);
+      }
+      else if (itemCount != null)
+      {
+         data = session.getCollectedData(object.getObjectId(), dciId, null, null, parseInt(itemCount, 0), valueType);
+      }
+      else
+      {
+         Date now = new Date();
+         long from = now.getTime() - 3600000; // one hour
+         data = session.getCollectedData(object.getObjectId(), dciId, new Date(from), now, parseInt(itemCount, 0), valueType);
+      }
+
+      if (dataCollectionObject instanceof DataCollectionTable)
+      {
+         return new ResponseContainer("values", transformTableDataOutput(data));
+      }
+
+      return new ResponseContainer("values", data);
    }
 
    /**
-    * Get the instance column values for a given table
-    * supports only dci table with a single instance column
+    * Transforms Full historical table data into consumable JSON format
     */
-   private ArrayList<String> getTableDciInstances(Table table) throws Exception
+   private Map<Object, Object> transformTableDataOutput(DciData data) throws Exception
    {
-      ArrayList<String> instances = new ArrayList<String>();
-      String instanceColumnName = null;
-      for (TableColumnDefinition tableColumnDefinition : table.getColumns())
+      HashMap<Object, Object> response = new HashMap<Object, Object>();
+      DciDataRow[] tableValues = data.getValues();
+
+      // All the columns will be the same regardless of the table,
+      // getting the first one to figure out the structure
+      Table firstTable = (Table) tableValues[0].getValue();
+
+      response.put("nodeId", data.getNodeId());
+      response.put("dciId", data.getDciId());
+      response.put("dataType", data.getDataType());
+      response.put("source", firstTable.getSource());
+      response.put("title", firstTable.getTitle());
+      response.put("columns", firstTable.getColumns());
+
+      // Get the instance columns
+      // Assumes that table has atleast 1 instance column
+      ArrayList<TableColumnDefinition> instanceColumns = new ArrayList<TableColumnDefinition>();
+      for (TableColumnDefinition column : firstTable.getColumns())
       {
-         if (tableColumnDefinition.isInstanceColumn()) {
-            instanceColumnName = tableColumnDefinition.getName();
-            break;
+         if (column.isInstanceColumn())
+         {
+            instanceColumns.add(column);
          }
-         throw new Exception("Incompatible operation");
       }
-      for (TableRow row : table.getAllRows())
+      if (instanceColumns.isEmpty())
       {
-         instances.add(row.getValue(table.getColumnIndex(instanceColumnName)));
+         throw new Exception("No instance column found in table");
       }
-      return instances;
+
+      Map<String, HashMap<String, ArrayList<HashMap<String, Object>>>> transformedData = new HashMap<>();
+      for (int i = 0; i < tableValues.length; i++)
+      {
+         long timestamp = tableValues[i].getTimestamp().getTime();
+         Table table = (Table) tableValues[i].getValue();
+         for (int j = 0; j < table.getRowCount(); j++)
+         {
+
+            String instanceKey = null;
+            for (TableColumnDefinition instanceColumn : instanceColumns)
+            {
+               if (instanceKey != null)
+               {
+                  instanceKey += "-";
+               }
+               instanceKey += table.getCellValue(j, table.getColumnIndex(instanceColumn.getName()));
+            }
+
+            if (transformedData.get(instanceKey) == null)
+            {
+               transformedData.put(instanceKey, new HashMap<String, ArrayList<HashMap<String, Object>>>());
+            }
+
+            for (TableColumnDefinition column : table.getColumns())
+            {
+               HashMap<String, Object> cell = new HashMap<String, Object>();
+               cell.put("value", table.getCellValue(j, table.getColumnIndex(column.getName())));
+               cell.put("timestamp", timestamp);
+               if (transformedData.get(instanceKey).get(column.getName()) == null)
+               {
+                  transformedData.get(instanceKey).put(column.getName(), new ArrayList<HashMap<String, Object>>());
+               }
+               transformedData.get(instanceKey).get(column.getName()).add(cell);
+            }
+         }
+      }
+
+      ArrayList<Object> dataList = new ArrayList<Object>();
+      for (Object _dataItem : transformedData.values())
+      {
+         dataList.add(_dataItem);
+      }
+      response.put("data", dataList);
+      return response;
    }
 
-   // This code is unreachable as it doesn't have an endpoint
    /**
     * @see org.netxms.websvc.handlers.AbstractHandler#getCollection(java.util.Map)
     */
-   @Override
-   protected Object getCollection(Map<String, String> query) throws Exception
-   {
-      NXCSession session = getSession();
-
-      String dciQuery = query.get("dciList");
-      String[] requestPairs = dciQuery.split(";");
-      if (requestPairs == null)
-         throw new NXCException(RCC.INVALID_DCI_ID);
-
-      HashMap<Long, DciData> dciData = new HashMap<Long, DciData>();
-
-      for (int i = 0; i < requestPairs.length; i++)
-      {
-         String[] dciPairs = requestPairs[i].split(",");
-         if (dciPairs == null)
-            throw new NXCException(RCC.INVALID_DCI_ID);
-
-         String dciId = dciPairs[0];
-         String nodeId = dciPairs[1];
-         String timeFrom = dciPairs[2];
-         String timeTo = dciPairs[3];
-         String timeInterval = dciPairs[4];
-         String timeUnit = dciPairs[5];
-
-         if (dciId == null || nodeId == null || !(session.findObjectById(parseLong(nodeId, 0)) instanceof DataCollectionTarget))
-            throw new NXCException(RCC.INVALID_OBJECT_ID);
-
-         DciData collectedData = null;
-
-         if (!timeFrom.equals("0") || !timeTo.equals("0"))
-         {
-            collectedData = session.getCollectedData(parseLong(nodeId, 0), parseLong(dciId, 0),
-                  new Date(parseLong(timeFrom, 0) * 1000), new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000),
-                  0, HistoricalDataType.PROCESSED);
-         }
-         else if (!timeInterval.equals("0"))
-         {
-            Date now = new Date();
-            long from;
-            if (parseInt(timeUnit, 0) == TimeUnit.HOUR.getValue())
-               from = now.getTime() - parseLong(timeInterval, 0) * 3600000;
-            else if (parseInt(timeUnit, 0) == TimeUnit.DAY.getValue())
-               from = now.getTime() - parseLong(timeInterval, 0) * 3600000 * 24;
-            else
-               from = now.getTime() - parseLong(timeInterval, 0) * 60000;
-            collectedData = session.getCollectedData(parseInt(nodeId, 0), parseInt(dciId, 0), new Date(from), new Date(), 0, HistoricalDataType.PROCESSED);
-         }
-         else
-         {
-            Date now = new Date();
-            long from = now.getTime() - 3600000; // one hour
-            collectedData = session.getCollectedData(parseInt(nodeId, 0), parseInt(dciId, 0), new Date(from), now, 0, HistoricalDataType.PROCESSED);
-         }
-
-         dciData.put((long)parseInt(dciId, 0), collectedData);
-      }
-
-      return new ResponseContainer("values", dciData);
-   }
+    @Override protected Object getCollection(Map<String, String> query) throws Exception
+    {
+       NXCSession session = getSession();
+ 
+       String dciQuery = query.get("dciList");
+       String[] requestPairs = dciQuery.split(";");
+       if (requestPairs == null)
+          throw new NXCException(RCC.INVALID_DCI_ID);
+ 
+       HashMap<Long, DciData> dciData = new HashMap<Long, DciData>();
+ 
+       for (int i = 0; i < requestPairs.length; i++)
+       {
+          String[] dciPairs = requestPairs[i].split(",");
+          if (dciPairs == null)
+             throw new NXCException(RCC.INVALID_DCI_ID);
+ 
+          String dciId = dciPairs[0];
+          String nodeId = dciPairs[1];
+          String timeFrom = dciPairs[2];
+          String timeTo = dciPairs[3];
+          String timeInterval = dciPairs[4];
+          String timeUnit = dciPairs[5];
+ 
+          if (dciId == null || nodeId == null || !(session.findObjectById(parseLong(nodeId, 0)) instanceof DataCollectionTarget))
+             throw new NXCException(RCC.INVALID_OBJECT_ID);
+ 
+          DciData collectedData = null;
+ 
+          if (!timeFrom.equals("0") || !timeTo.equals("0"))
+          {
+             collectedData = session.getCollectedData(parseLong(nodeId, 0), parseLong(dciId, 0),
+                   new Date(parseLong(timeFrom, 0) * 1000), new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000),
+                   0, HistoricalDataType.PROCESSED);
+          }
+          else if (!timeInterval.equals("0"))
+          {
+             Date now = new Date();
+             long from;
+             if (parseInt(timeUnit, 0) == TimeUnit.HOUR.getValue())
+                from = now.getTime() - parseLong(timeInterval, 0) * 3600000;
+             else if (parseInt(timeUnit, 0) == TimeUnit.DAY.getValue())
+                from = now.getTime() - parseLong(timeInterval, 0) * 3600000 * 24;
+             else
+                from = now.getTime() - parseLong(timeInterval, 0) * 60000;
+             collectedData = session.getCollectedData(parseInt(nodeId, 0), parseInt(dciId, 0), new Date(from), new Date(), 0, HistoricalDataType.PROCESSED);
+          }
+          else
+          {
+             Date now = new Date();
+             long from = now.getTime() - 3600000; // one hour
+             collectedData = session.getCollectedData(parseInt(nodeId, 0), parseInt(dciId, 0), new Date(from), now, 0, HistoricalDataType.PROCESSED);
+          }
+ 
+          dciData.put((long)parseInt(dciId, 0), collectedData);
+       }
+ 
+       return new ResponseContainer("values", dciData);
+    }
 }
