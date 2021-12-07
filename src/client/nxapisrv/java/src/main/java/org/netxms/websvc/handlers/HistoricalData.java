@@ -27,7 +27,6 @@ import org.netxms.client.NXCException;
 import org.netxms.client.NXCSession;
 import org.netxms.client.constants.HistoricalDataType;
 import org.netxms.client.constants.RCC;
-import org.netxms.client.constants.TimeUnit;
 import org.netxms.client.datacollection.DciData;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.DataCollectionTarget;
@@ -149,61 +148,65 @@ public class HistoricalData extends AbstractObjectHandler {
    /**
     * @see org.netxms.websvc.handlers.AbstractHandler#getCollection(java.util.Map)
     */
-   @Override
-   protected Object getCollection(Map<String, String> query) throws Exception {
-      NXCSession session = getSession();
+   // @Override
+   // protected Object getCollection(Map<String, String> query) throws Exception {
+   // NXCSession session = getSession();
 
-      String dciQuery = query.get("dciList");
-      String[] requestPairs = dciQuery.split(";");
-      if (requestPairs == null)
-         throw new NXCException(RCC.INVALID_DCI_ID);
+   // String dciQuery = query.get("dciList");
+   // String[] requestPairs = dciQuery.split(";");
+   // if (requestPairs == null)
+   // throw new NXCException(RCC.INVALID_DCI_ID);
 
-      HashMap<Long, DciData> dciData = new HashMap<Long, DciData>();
+   // HashMap<Long, DciData> dciData = new HashMap<Long, DciData>();
 
-      for (int i = 0; i < requestPairs.length; i++) {
-         String[] dciPairs = requestPairs[i].split(",");
-         if (dciPairs == null)
-            throw new NXCException(RCC.INVALID_DCI_ID);
+   // for (int i = 0; i < requestPairs.length; i++) {
+   // String[] dciPairs = requestPairs[i].split(",");
+   // if (dciPairs == null)
+   // throw new NXCException(RCC.INVALID_DCI_ID);
 
-         String dciId = dciPairs[0];
-         String nodeId = dciPairs[1];
-         String timeFrom = dciPairs[2];
-         String timeTo = dciPairs[3];
-         String timeInterval = dciPairs[4];
-         String timeUnit = dciPairs[5];
+   // String dciId = dciPairs[0];
+   // String nodeId = dciPairs[1];
+   // String timeFrom = dciPairs[2];
+   // String timeTo = dciPairs[3];
+   // String timeInterval = dciPairs[4];
+   // String timeUnit = dciPairs[5];
 
-         if (dciId == null || nodeId == null
-               || !(session.findObjectById(parseLong(nodeId, 0)) instanceof DataCollectionTarget))
-            throw new NXCException(RCC.INVALID_OBJECT_ID);
+   // if (dciId == null || nodeId == null
+   // || !(session.findObjectById(parseLong(nodeId, 0)) instanceof
+   // DataCollectionTarget))
+   // throw new NXCException(RCC.INVALID_OBJECT_ID);
 
-         DciData collectedData = null;
+   // DciData collectedData = null;
 
-         if (!timeFrom.equals("0") || !timeTo.equals("0")) {
-            collectedData = session.getCollectedData(parseLong(nodeId, 0), parseLong(dciId, 0),
-                  new Date(parseLong(timeFrom, 0) * 1000),
-                  new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000),
-                  0, HistoricalDataType.PROCESSED);
-         } else if (!timeInterval.equals("0")) {
-            Date now = new Date();
-            long from;
-            if (parseInt(timeUnit, 0) == TimeUnit.HOUR.getValue())
-               from = now.getTime() - parseLong(timeInterval, 0) * 3600000;
-            else if (parseInt(timeUnit, 0) == TimeUnit.DAY.getValue())
-               from = now.getTime() - parseLong(timeInterval, 0) * 3600000 * 24;
-            else
-               from = now.getTime() - parseLong(timeInterval, 0) * 60000;
-            collectedData = session.getCollectedData(parseInt(nodeId, 0), parseInt(dciId, 0), new Date(from),
-                  new Date(), 0, HistoricalDataType.PROCESSED);
-         } else {
-            Date now = new Date();
-            long from = now.getTime() - 3600000; // one hour
-            collectedData = session.getCollectedData(parseInt(nodeId, 0), parseInt(dciId, 0), new Date(from), now,
-                  0, HistoricalDataType.PROCESSED);
-         }
+   // if (!timeFrom.equals("0") || !timeTo.equals("0")) {
+   // collectedData = session.getCollectedData(parseLong(nodeId, 0),
+   // parseLong(dciId, 0),
+   // new Date(parseLong(timeFrom, 0) * 1000),
+   // new Date(parseLong(timeTo, System.currentTimeMillis() / 1000) * 1000),
+   // 0, HistoricalDataType.PROCESSED);
+   // } else if (!timeInterval.equals("0")) {
+   // Date now = new Date();
+   // long from;
+   // if (parseInt(timeUnit, 0) == TimeUnit.HOUR.getValue())
+   // from = now.getTime() - parseLong(timeInterval, 0) * 3600000;
+   // else if (parseInt(timeUnit, 0) == TimeUnit.DAY.getValue())
+   // from = now.getTime() - parseLong(timeInterval, 0) * 3600000 * 24;
+   // else
+   // from = now.getTime() - parseLong(timeInterval, 0) * 60000;
+   // collectedData = session.getCollectedData(parseInt(nodeId, 0), parseInt(dciId,
+   // 0), new Date(from),
+   // new Date(), 0, HistoricalDataType.PROCESSED);
+   // } else {
+   // Date now = new Date();
+   // long from = now.getTime() - 3600000; // one hour
+   // collectedData = session.getCollectedData(parseInt(nodeId, 0), parseInt(dciId,
+   // 0), new Date(from), now,
+   // 0, HistoricalDataType.PROCESSED);
+   // }
 
-         dciData.put((long) parseInt(dciId, 0), collectedData);
-      }
+   // dciData.put((long) parseInt(dciId, 0), collectedData);
+   // }
 
-      return new ResponseContainer("values", dciData);
-   }
+   // return new ResponseContainer("values", dciData);
+   // }
 }
