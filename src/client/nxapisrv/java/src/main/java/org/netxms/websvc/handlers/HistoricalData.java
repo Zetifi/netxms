@@ -66,8 +66,7 @@ public class HistoricalData extends AbstractObjectHandler {
       String timeInterval = query.get("timeInterval");
       String itemCount = query.get("itemCount");
 
-      DataCollectionConfiguration dataCollectionConfiguration = session
-            .openDataCollectionConfiguration(getObjectId());
+      DataCollectionConfiguration dataCollectionConfiguration = session.openDataCollectionConfiguration(getObjectId());
       DataCollectionObject dataCollectionObject = dataCollectionConfiguration.findItem(dciId);
 
       if (dataCollectionObject instanceof DataCollectionItem) {
@@ -95,7 +94,9 @@ public class HistoricalData extends AbstractObjectHandler {
 
          return new ResponseContainer("values", data);
       } else if (dataCollectionObject instanceof DataCollectionTable) {
+         HashMap<Object, Object> response = new HashMap<Object, Object>();
          ArrayList<HashMap<Object, Object>> tableData = new ArrayList<HashMap<Object, Object>>();
+
          Date dateTimeFrom = null;
          Date dateTimeTo = null;
          if (timeFrom != null || timeTo != null) {
@@ -105,21 +106,32 @@ public class HistoricalData extends AbstractObjectHandler {
             dateTimeTo = new Date();
             dateTimeFrom = new Date(dateTimeTo.getTime() - parseLong(timeInterval, 0) * 1000);
          }
+
          Table table = session.getTableLastValues(getObjectId(), dciId);
+         response.put("nodeId", getObjectId());
+         response.put("dciId", dciId);
+         response.put("title", table.getTitle());
+         response.put("source", table.getSource());
+         response.put("columns", table.getColumns());
+
          ArrayList<String> tableDciInstances = getTableDciInstances(table);
+
          for (String instance : tableDciInstances) {
             HashMap<Object, Object> rowResult = new HashMap<Object, Object>();
             for (TableColumnDefinition tableColumnDefinition : table.getColumns()) {
                DciData tableCellData = null;
                String tableColumnName = tableColumnDefinition.getName();
+
                tableCellData = session.getCollectedTableData(object.getObjectId(), dciId, instance,
                      tableColumnName,
                      dateTimeFrom, dateTimeTo, parseInt(itemCount, 0));
-               rowResult.put(tableColumnName, tableCellData);
+
+               rowResult.put(tableColumnName, tableCellData.getValues());
             }
             tableData.add(rowResult);
          }
-         return new ResponseContainer("values", tableData);
+         response.put("data", tableData);
+         return new ResponseContainer("values", response);
       }
       return new ResponseContainer("values", null);
    }
