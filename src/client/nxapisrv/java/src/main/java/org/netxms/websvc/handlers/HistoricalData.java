@@ -131,7 +131,7 @@ public class HistoricalData extends AbstractObjectHandler {
             tableData.add(rowResult);
          }
          response.put("data", tableData);
-         return new ResponseContainer("values", response);
+         return response;
       }
       return new ResponseContainer("values", null);
    }
